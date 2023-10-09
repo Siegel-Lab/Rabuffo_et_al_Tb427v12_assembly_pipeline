@@ -127,8 +127,8 @@ virtual_paired_read_distance(){
 
 
 
-# virtual_paired_read_distance ${GENOME_FASTA_IN} "referece"
-# virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
+virtual_paired_read_distance ${GENOME_FASTA_IN} "referece"
+virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
 
 
 
@@ -159,7 +159,7 @@ generate_overview_pic(){
 
 
 
-generate_overview_pic
+# generate_overview_pic
 
 
 
