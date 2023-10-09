@@ -249,13 +249,28 @@ class AnnoViz(object):
                 glyph_data["right"].append(feature.end)
                 glyph_data["start"].append(feature.start)
                 glyph_data["end"].append(feature.end)
+                glyph_data["zorder"].append(self._feature_types.index(feature.featuretype))
                 glyph_data["ID"].append(
                     feature.attributes.get("ID", [""])[0])
                 glyph_data["product"].append(
                     feature.attributes.get("product", [""])[0][:50])
                 glyph_data["feature_type"].append(feature.featuretype)
                 glyph_data["color"].append(self._color_of_feature(feature))
-            self._annotation_glyphs_by_replicon[replicon] = glyph_data
+            # sort by zorder
+            zipped_sorted = sorted(zip(glyph_data["zorder"], glyph_data["bottom"], glyph_data["top"], 
+                glyph_data["left"], glyph_data["right"], glyph_data["start"], glyph_data["ID"], glyph_data["product"], glyph_data["feature_type"], glyph_data["color"]))
+            self._annotation_glyphs_by_replicon[replicon] = {
+                "zorder": [x[0] for x in zipped_sorted],
+                "bottom": [x[1] for x in zipped_sorted],
+                "top": [x[2] for x in zipped_sorted],
+                "left": [x[3] for x in zipped_sorted],
+                "right": [x[4] for x in zipped_sorted],
+                "start": [x[5] for x in zipped_sorted],
+                "ID": [x[6] for x in zipped_sorted],
+                "product": [x[7] for x in zipped_sorted],
+                "feature_type": [x[8] for x in zipped_sorted],
+                "color": [x[9] for x in zipped_sorted],
+            }
         if self._report_feature_selection:
             print("\nNumber of plotted features: {}".format(feature_counter))
 
@@ -303,7 +318,7 @@ class AnnoViz(object):
 
     def _viz_matplotlib_singlepage(self):
         total_number_subplots = len(self._replicons)
-        figure = plt.figure(figsize=(6.4, total_number_subplots*2))
+        figure = plt.figure(figsize=(6.4, total_number_subplots))
         if self._wiggle_files is not None:
             total_number_subplots += len(
                 self._replicons) + len(self._wiggle_files)
@@ -311,7 +326,7 @@ class AnnoViz(object):
         max_width = max([self._plot_width_matplotlib(
             replicon) for replicon in self._replicons])
         grid_spec = matplotlib.gridspec.GridSpec(
-            total_number_subplots, max_width)
+            total_number_subplots, max_width, hspace=4)
         for replicon in self._replicons:
             width = self._plot_width_matplotlib(replicon)
             if self._wiggle_files is not None:
@@ -352,7 +367,7 @@ class AnnoViz(object):
             width, grid_spec):
         ax = plt.subplot(grid_spec[subplot_index-1, 0:max(width, 1)])
         self._replicon_subplot_matplotlib(replicon, ax)
-        ax.set_title(replicon)
+        ax.set_title(replicon, horizontalalignment="left", x=0)
         self._set_ticks(ax)
 
     def _generate_replicon_subplot_matplotlib_multipage(
@@ -364,7 +379,7 @@ class AnnoViz(object):
         self._set_ticks(ax)
         
     def _replicon_subplot_matplotlib(self, replicon, ax):
-        if len(self._annotation_glyphs_by_replicon[replicon]) > 0:
+        if len(self._annotation_glyphs_by_replicon[replicon]["left"]) > 0:
             plt.xlim(min(self._annotation_glyphs_by_replicon[replicon]["left"]),
                     max(self._annotation_glyphs_by_replicon[replicon]["right"]))
             plt.ylim(min(self._annotation_glyphs_by_replicon[replicon]["bottom"]),
