@@ -105,14 +105,14 @@ virtual_paired_read_distance(){
 
     
     if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam ];then
-        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam
-        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam
+        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.reads.minimap.errlog
+        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.mates.minimap.errlog
     fi 
 
     # filter out low mapping quality reads
     if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ];then
-        samtools view -Sq 30 ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam 
-        samtools view -Sq 30 ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam 
+        samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam 
+        samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam 
     fi 
 
     # compute distances
@@ -120,9 +120,7 @@ virtual_paired_read_distance(){
         python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances > ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation
     fi
 
-    echo "Average distance deviation for ${NAME}:"
-    cat ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation
-
+    echo "Distance deviation for ${NAME} is stored in file ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation"
 }
 
 
