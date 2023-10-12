@@ -99,24 +99,24 @@ virtual_paired_read_distance(){
 
     # lets create the virtual illumina reads
 
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ];then
-        zcat ${ONT_READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances 10000 2000
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ]; then
+        zcat ${ONT_READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances 10000 1000
     fi 
 
     
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam ];then
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam ]; then
         minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.reads.minimap.errlog
         minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.mates.minimap.errlog
     fi 
 
     # filter out low mapping quality reads
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ];then
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ]; then
         samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam 
         samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam 
     fi 
 
     # compute distances
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ];then
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ]; then
         python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances > ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation
     fi
 
@@ -126,6 +126,13 @@ virtual_paired_read_distance(){
 
 
 virtual_paired_read_distance ${GENOME_FASTA_IN} "referece"
+
+
+# check gap spanning
+if [ ! -e ${VIRT_PAIR_R_DIST}/gap_spanning_reads ]; then
+    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${GFF_IN} > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
+fi
+
 virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
 
 
