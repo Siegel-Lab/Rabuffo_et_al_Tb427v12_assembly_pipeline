@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --cpus-per-task=18
-#SBATCH --mem=250G
+#SBATCH --mem=500G
 #SBATCH --time=7-00:00:00
-#SBATCH --partition=slim18
+#SBATCH --partition=fat
 #SBATCH --job-name=samba
 #SBATCH -o ../data/logfiles/slurm-out-samba-%j.out
 
@@ -21,6 +21,8 @@ MASUCRA_BIN=$(realpath ../bin/MaSuRCA-4.1.0/bin)
 MINIM_OUT_FILE=$(realpath ../data/comparison/genome_alignment)
 DIFFERENCES_OUT_FILE=$(realpath ../data/comparison/genome_differences)
 VIRT_PAIR_R_DIST=$(realpath ../data/virtual_paired_read_dist)
+TANDEM_QUAST=$(realpath ../bin/TandemTools)
+TANDEM_QUAST_OUT=$(realpath ../data/tandem_quast_out)
 
 BIN_DIR=$(realpath ../bin/)
 OVERVIEW_DIR=$(realpath ../data/overview)
@@ -166,6 +168,24 @@ generate_overview_pic(){
 
 # generate_overview_pic
 
+
+extend_repeats(){
+    conda deactivate
+    conda activate tandem_tools
+
+    if [ ! -e ${TANDEM_QUAST_OUT}/genome.joined.fasta ]; then
+        python3 ${SCRIPTS_DIR}/join_contigs_with_n.py ${FIXED_N_ASSEMBLY} 1000 > ${TANDEM_QUAST_OUT}/genome.joined.fasta
+    fi
+    if [ ! -e ${TANDEM_QUAST_OUT}/reads.fasta ]; then
+        zcat ${ONT_READS_IN} > ${TANDEM_QUAST_OUT}/reads.fasta
+    fi
+    python3 ${TANDEM_QUAST}/tandemquast.py -t 18 --nano ${TANDEM_QUAST_OUT}/reads.fasta -o ${TANDEM_QUAST_OUT} ${TANDEM_QUAST_OUT}/genome.joined.fasta
+
+    conda deactivate
+    conda activate ont_assembly
+}
+
+extend_repeats
 
 
 # STEP ?: compare the assemblies
