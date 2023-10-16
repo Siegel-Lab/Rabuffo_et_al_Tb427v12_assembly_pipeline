@@ -21,8 +21,7 @@ MASUCRA_BIN=$(realpath ../bin/MaSuRCA-4.1.0/bin)
 MINIM_OUT_FILE=$(realpath ../data/comparison/genome_alignment)
 DIFFERENCES_OUT_FILE=$(realpath ../data/comparison/genome_differences)
 VIRT_PAIR_R_DIST=$(realpath ../data/virtual_paired_read_dist)
-TANDEM_QUAST=$(realpath ../bin/TandemTools)
-TANDEM_QUAST_OUT=$(realpath ../data/tandem_quast_out)
+LONG_STITCH_OUT=$(realpath ../data/long_stitch_out)
 
 BIN_DIR=$(realpath ../bin/)
 OVERVIEW_DIR=$(realpath ../data/overview)
@@ -90,8 +89,8 @@ fixup_assembly
 
 
 
-module load ngs/minimap2/2.10
-module load ngs/samtools/1.9
+#module load ngs/minimap2/2.10
+#module load ngs/samtools/1.9
 virtual_paired_read_distance(){
     GENOME=$1
     NAME=$2
@@ -171,15 +170,30 @@ generate_overview_pic(){
 
 extend_repeats(){
     conda deactivate
-    conda activate tandem_tools
+    conda activate longstitch
 
-    if [ ! -e ${TANDEM_QUAST_OUT}/genome.joined.fasta ]; then
-        python3 ${SCRIPTS_DIR}/join_contigs_with_n.py ${FIXED_N_ASSEMBLY} 1000 > ${TANDEM_QUAST_OUT}/genome.joined.fasta
+    TMP_READS=${LONG_STITCH_OUT}/reads
+    GENOME_SIZES=${LONG_STITCH_OUT}/genome.sizes
+    TMP_GNEOME=${LONG_STITCH_OUT}/genome
+
+    if [ ! -e ${TMP_READS}.fa.gz ]; then
+        zcat ${ONT_READS_IN} | sed -n '1~4s/^@/>/p;2~4p' | gzip > ${TMP_READS}.fa.gz
     fi
-    if [ ! -e ${TANDEM_QUAST_OUT}/reads.fasta ]; then
-        zcat ${ONT_READS_IN} > ${TANDEM_QUAST_OUT}/reads.fasta
+
+    if [ ! -e ${GENOME_SIZES} ]; then
+        faidx ${FIXED_N_ASSEMBLY} -i chromsizes > ${GENOME_SIZES}
     fi
-    python3 ${TANDEM_QUAST}/tandemquast.py -t 18 --nano ${TANDEM_QUAST_OUT}/reads.fasta -o ${TANDEM_QUAST_OUT} ${TANDEM_QUAST_OUT}/genome.joined.fasta
+
+    if [ ! -e ${TMP_GNEOME}.fa ]; then
+        cp ${FIXED_N_ASSEMBLY} ${TMP_GNEOME}.fa
+    fi
+
+    GENOME_SIZE=$(awk '{sum+=$2;} END{print sum;}' ${GENOME_SIZES})
+    echo "Genome size of fixed_n is ${GENOME_SIZE}"
+
+    cd ${LONG_STITCH_OUT}
+    longstitch run draft=genome reads=reads span=10 k_ntLink=24 w=100
+
 
     conda deactivate
     conda activate ont_assembly
