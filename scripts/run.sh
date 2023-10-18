@@ -50,7 +50,7 @@ mask_repeats(){
     fi
 }
 
-mask_repeats ${GENOME_FASTA_IN} "reference" ${DATA_DIR}/in/mask_repeats/manual_repeats.gff
+# mask_repeats ${GENOME_FASTA_IN} "reference" ${DATA_DIR}/in/mask_repeats/manual_repeats.gff
 
 
 close_gaps()
@@ -60,14 +60,14 @@ close_gaps()
 
     cd ${DATA_DIR}/out/samba_out_1
 
-    ${MASUCRA_BIN}/close_scaffold_gaps.sh -r ${REFERENCE} -q ${ONT_READS_IN} -t 18 -m 2000 -d ont
+    ${MASUCRA_BIN}/close_scaffold_gaps.sh -r ${REFERENCE} -q ${ONT_READS_IN} -t 18 -m 500 -i 95 -d ont
 
     # .valid_join_pairs.txt contains how scaffolds have been split into contigs
     # .fasta.split.joined.fa is the main outputfile
 
     # .patches.coords seems interesting
 
-    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fasta.split.joined.fa
+    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/HGAP3_Tb427v10.fasta.split.joined.fa
     FIXED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fixed_n.fasta
 
     if [ ! -e ${FIXED_N_ASSEMBLY} ];then
@@ -110,7 +110,7 @@ close_gaps()
     ############################################
 }
 
-close_gaps ${MASK_REPEATS_DIR}/reference.fasta reference
+close_gaps ${GENOME_FASTA_IN} reference
 
 
 module load ngs/minimap2/2.10
@@ -155,7 +155,7 @@ virtual_paired_read_distance(){
     # lets create the virtual illumina reads
 
     if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ]; then
-        zcat ${ONT_READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances 10000 1000
+        zcat ${ONT_READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances 2000 500
     fi 
 
     
@@ -202,7 +202,21 @@ generate_overview_pic(){
         python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
     fi
 
-    if [ ! -e ${OVERVIEW_DIR}/genome_overview.svg ]; then
+    if [ ! -e ${OVERVIEW_DIR}/genome_overview_gaps.svg ]; then
+        conda activate GENEastics_env
+        python3 ${BIN_DIR}/geneastics.py \
+            --replicons ${CONTIGS_WITH_GAPS} \
+            --gff_file ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 \
+            --feature_types "pseudogene" "Centromere" "gap" "closedgap" \
+            --alpha 0.99 \
+            --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=red" \
+            --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
+            --x_tick_distance 500000 \
+            --font_size 1 \
+            --output_file ${OVERVIEW_DIR}/genome_overview_gaps.svg
+        conda deactivate
+    fi
+    if [ ! -e ${OVERVIEW_DIR}/genome_overview_closed.svg ]; then
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
@@ -213,8 +227,27 @@ generate_overview_pic(){
             --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
             --x_tick_distance 500000 \
             --font_size 1 \
-            --output_file ${OVERVIEW_DIR}/genome_overview.svg
+            --output_file ${OVERVIEW_DIR}/genome_overview_closed.svg
         conda deactivate
+    fi
+    if [ ! -e ${OVERVIEW_DIR}/genome_overview_fixed.svg ]; then
+        if [ -e ${VIRT_PAIR_R_DIST}/closed_gaps_analysis.gff ]; then
+            if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 ]; then
+                python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${FIXED_N_ASSEMBLY}.gaps.gff3 ${VIRT_PAIR_R_DIST}/closed_gaps_analysis.gff > ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3
+            fi
+            conda activate GENEastics_env
+            python3 ${BIN_DIR}/geneastics.py \
+                --replicons ${CONTIGS_WITH_GAPS} \
+                --gff_file ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 \
+                --feature_types "pseudogene" "Centromere" "gap" "closedgap" "fixedgap" \
+                --alpha 0.99 \
+                --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=orange;fixedgap=green" \
+                --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
+                --x_tick_distance 500000 \
+                --font_size 1 \
+                --output_file ${OVERVIEW_DIR}/genome_overview_fixed.svg
+            conda deactivate
+        fi
     fi
 }
 

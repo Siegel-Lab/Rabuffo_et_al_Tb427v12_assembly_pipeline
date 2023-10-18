@@ -41,7 +41,7 @@ def check_spans_gap(reads_in, mates_in, gff_file):
                 if rname in gaps:
                     for gap_start, gap_end in gaps[rname]:
                         if (o_rpos < gap_start and pos > gap_end) or (pos < gap_start and o_rpos > gap_end):
-                            spans_gap.append(rname[:-len("_Tb427v10")] + ":" + str(int(gap_start/1000)) + "kbp")
+                            spans_gap.append(rname[:-len("_Tb427v10")] + ":" + str(gap_start) + "-" + str(gap_end))
 
                 if len(spans_gap) > 0:
                     print(qname, *spans_gap, sep='\t')
