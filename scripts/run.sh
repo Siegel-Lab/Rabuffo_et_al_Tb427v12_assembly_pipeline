@@ -4,7 +4,6 @@
 #SBATCH --time=7-00:00:00
 #SBATCH --partition=fat
 #SBATCH --job-name=samba
-#SBATCH -o ../data/logfiles/slurm-out-samba-%j.out
 
 source /home/mschmidt/.miniconda3/etc/profile.d/conda.sh
 
@@ -14,39 +13,66 @@ set -e
 ## STEP 1: configure
 
 
-GENOME_FASTA_IN=$(realpath ../data/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
-GFF_IN=$(realpath ../data/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
-ONT_READS_IN=$(realpath ../data/ont_reads_in/duplex_reads.fastq.gz)
+GENOME_FASTA_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
+GFF_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
+ONT_READS_IN=$(realpath ../data/in/ont_reads_in/duplex_reads.fastq.gz)
 MASUCRA_BIN=$(realpath ../bin/MaSuRCA-4.1.0/bin)
-MINIM_OUT_FILE=$(realpath ../data/comparison/genome_alignment)
-DIFFERENCES_OUT_FILE=$(realpath ../data/comparison/genome_differences)
-VIRT_PAIR_R_DIST=$(realpath ../data/virtual_paired_read_dist)
-LONG_STITCH_OUT=$(realpath ../data/long_stitch_out)
+COMPARISON_DIR=$(realpath ../data/out/comparison)
+VIRT_PAIR_R_DIST=$(realpath ../data/out/virtual_paired_read_dist)
+LONG_STITCH_OUT=$(realpath ../data/out/long_stitch_out)
+MASK_REPEATS_DIR=$(realpath ../data/out/mask_repeats)
+SAMBA_OUT=$(realpath ../data/out/samba_out_1)
 
 BIN_DIR=$(realpath ../bin/)
-OVERVIEW_DIR=$(realpath ../data/overview)
+OVERVIEW_DIR=$(realpath ../data/out/overview)
 DATA_DIR=$(realpath ../data)
 SCRIPTS_DIR=$(realpath .)
 
-## STEP 2: run samba to fill 'N' gaps in the assembly
+setup() {
+    mkdir -p ${COMPARISON_DIR}
+    mkdir -p ${VIRT_PAIR_R_DIST}
+    mkdir -p ${LONG_STITCH_OUT}
+    mkdir -p ${MASK_REPEATS_DIR}
+    mkdir -p ${OVERVIEW_DIR}
+    mkdir -p ${SAMBA_OUT}
+}
+
+setup
 
 
-fixup_assembly()
+mask_repeats(){
+    REFERENCE=$1
+    REF_NAME=$2
+    REPEATS_IN=$3
+
+    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ]; then
+        python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${REPEATS_IN} > ${MASK_REPEATS_DIR}/${REF_NAME}.fasta
+    fi
+}
+
+mask_repeats ${GENOME_FASTA_IN} "reference" ${DATA_DIR}/in/mask_repeats/manual_repeats.gff
+
+
+close_gaps()
 {
-    cd ${DATA_DIR}/samba_out_1
+    REFERENCE=$1
+    REF_NAME=$2
 
-    ${MASUCRA_BIN}/close_scaffold_gaps.sh -r ${GENOME_FASTA_IN} -q ${ONT_READS_IN} -t 18 -m 2000 -d ont
+    cd ${DATA_DIR}/out/samba_out_1
+
+    ${MASUCRA_BIN}/close_scaffold_gaps.sh -r ${REFERENCE} -q ${ONT_READS_IN} -t 18 -m 2000 -d ont
 
     # .valid_join_pairs.txt contains how scaffolds have been split into contigs
     # .fasta.split.joined.fa is the main outputfile
 
     # .patches.coords seems interesting
 
-    FILLED_N_ASSEMBLY=${DATA_DIR}/samba_out_1/HGAP3_Tb427v10.fasta.split.joined.fa
-    FIXED_N_ASSEMBLY=${DATA_DIR}/samba_out_1/HGAP3_Tb427v10.fixed_n.fasta
+    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fasta.split.joined.fa
+    FIXED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fixed_n.fasta
 
     if [ ! -e ${FIXED_N_ASSEMBLY} ];then
         python3 ${SCRIPTS_DIR}/fixup_number_of_n.py ${FILLED_N_ASSEMBLY} 100 1000 > ${FIXED_N_ASSEMBLY}
+
     fi
     if [ ! -e ${FIXED_N_ASSEMBLY}.gaps.gff3 ];then
         python3 ${SCRIPTS_DIR}/annotate_gaps.py ${FIXED_N_ASSEMBLY} > ${FIXED_N_ASSEMBLY}.gaps.gff3
@@ -84,13 +110,41 @@ fixup_assembly()
     ############################################
 }
 
-fixup_assembly
+close_gaps ${MASK_REPEATS_DIR}/reference.fasta reference
+
+
+module load ngs/minimap2/2.10
+module load ngs/samtools/1.9
+compare_assemblies(){
+    REFERENCE=$1
+    REF_NAME=$2
+    QUERY=$3
+    Q_NAME=$4
+    echo ${REFERENCE} ${REF_NAME} ${QUERY} ${Q_NAME}
+
+    
+    if [ ! -e ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta ];then
+        cat ${REFERENCE} | fassort > ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta
+    fi 
+    if [ ! -e ${DATA_DIR}/comparison/${Q_NAME}.sorted.fasta ];then
+        cat ${QUERY} | fassort > ${DATA_DIR}/out/comparison/${Q_NAME}.sorted.fasta
+    fi 
+
+
+    if [ ! -e ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf ];then
+        minimap2 -x asm5 ${DATA_DIR}/out/comparison/${Q_NAME}.sorted.fasta ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta > ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf
+    fi 
+
+    if [ ! -e ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.differences.paf ];then
+        python3 ${SCRIPTS_DIR}/differences_from_paf.py ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf > ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.differences.paf
+    fi 
+}
+
+compare_assemblies ${GENOME_FASTA_IN} "reference" ${FIXED_N_ASSEMBLY} "fixed_n"
 
 
 
 
-#module load ngs/minimap2/2.10
-#module load ngs/samtools/1.9
 virtual_paired_read_distance(){
     GENOME=$1
     NAME=$2
@@ -139,84 +193,74 @@ virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
 
 
 
-generate_overview_pic(){    
-    # "BES10_Tb427v10" "BES11_Tb427v10" "BES12_Tb427v10" "BES13_Tb427v10" "BES14_Tb427v10" "BES15_Tb427v10" "BES17_Tb427v10" "BES1_Tb427v10" "BES2_Tb427v10" "BES3_Tb427v10" "BES4_Tb427v10" "BES5_Tb427v10" "BES7_Tb427v10" "Chr10_3A_Tb427v10" "Chr10_3B_Tb427v10" "Chr10_5A_Tb427v10" "Chr10_5B_Tb427v10" "Chr10_core_Tb427v10" "Chr11_3A_Tb427v10" "Chr11_3B_Tb427v10" "Chr11_5A_Tb427v10" "Chr11_5B_Tb427v10" "Chr11_core_Tb427v10" "Chr1_3A_Tb427v10" "Chr1_3B_Tb427v10" "Chr1_5A_Tb427v10" "Chr1_5B_Tb427v10" "Chr1_core_Tb427v10" "Chr2_5A_Tb427v10" "Chr2_core_Tb427v10" "Chr3_3A_Tb427v10" "Chr3_5A_Tb427v10" "Chr3_core_Tb427v10" "Chr4_3A_Tb427v10" "Chr4_3B_Tb427v10" "Chr4_5A_Tb427v10" "Chr4_5B_Tb427v10" "Chr4_core_Tb427v10" "Chr5_3A_Tb427v10" "Chr5_3B_Tb427v10" "Chr5_core_Tb427v10" "Chr6_3A_Tb427v10" "Chr6_3B_Tb427v10" "Chr6_core_Tb427v10" "Chr7_5A_Tb427v10" "Chr7_core_Tb427v10" "Chr8_3A_Tb427v10" "Chr8_3B_Tb427v10" "Chr8_5A_Tb427v10" "Chr8_5B_Tb427v10" "Chr8_core_Tb427v10" "Chr9_3A_Tb427v10" "Chr9_3B_Tb427v10" "Chr9_5A_Tb427v10" "Chr9_5B_Tb427v10" "Chr9_core_Tb427v10" "Chr3_5B_Tb427v10" \
 
-    # "BES17_Tb427v10" "BES2_Tb427v10" "Chr1_3A_Tb427v10" "Chr1_3B_Tb427v10" "Chr1_core_Tb427v10" "Chr3_5A_Tb427v10" "Chr3_core_Tb427v10" "Chr4_core_Tb427v10" "Chr5_3A_Tb427v10" "Chr5_3B_Tb427v10" "Chr5_core_Tb427v10" "Chr6_3A_Tb427v10" "Chr6_3B_Tb427v10" "Chr7_core_Tb427v10" "Chr8_3A_Tb427v10" "Chr8_5A_Tb427v10" "Chr8_5B_Tb427v10" "Chr8_core_Tb427v10" "Chr9_3A_Tb427v10" "Chr9_3B_Tb427v10" "Chr9_5A_Tb427v10" "Chr9_core_Tb427v10" "Chr10_3A_Tb427v10" "Chr11_3A_Tb427v10" "Chr11_3B_Tb427v10" "Chr11_core_Tb427v10"
+generate_overview_pic(){
 
     CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_IN} | awk '{print $1}' | sort | uniq)
 
-    python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
+    if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 ]; then
+        python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
+    fi
 
-    conda activate GENEastics_env
-    python3 ${BIN_DIR}/geneastics.py \
-        --replicons ${CONTIGS_WITH_GAPS} \
-        --gff_file ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 \
-        --feature_types "pseudogene" "Centromere" "gap" "closedgap" \
-        --alpha 0.99 \
-        --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=green" \
-        --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
-        --x_tick_distance 500000 \
-        --font_size 1 \
-        --output_file ${OVERVIEW_DIR}/genome_overview.svg
-    conda deactivate
+    if [ ! -e ${OVERVIEW_DIR}/genome_overview.svg ]; then
+        conda activate GENEastics_env
+        python3 ${BIN_DIR}/geneastics.py \
+            --replicons ${CONTIGS_WITH_GAPS} \
+            --gff_file ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 \
+            --feature_types "pseudogene" "Centromere" "gap" "closedgap" \
+            --alpha 0.99 \
+            --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=green" \
+            --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
+            --x_tick_distance 500000 \
+            --font_size 1 \
+            --output_file ${OVERVIEW_DIR}/genome_overview.svg
+        conda deactivate
+    fi
 }
 
 
 
 
-# generate_overview_pic
+generate_overview_pic
 
 
-extend_repeats(){
-    conda deactivate
-    conda activate longstitch
+## hmm this does not work as i want
+# extend_repeats_long_stitch(){
+#     conda deactivate
+#     conda activate longstitch
 
-    TMP_READS=${LONG_STITCH_OUT}/reads
-    GENOME_SIZES=${LONG_STITCH_OUT}/genome.sizes
-    TMP_GNEOME=${LONG_STITCH_OUT}/genome
+#     TMP_READS=${LONG_STITCH_OUT}/reads
+#     GENOME_SIZES=${LONG_STITCH_OUT}/genome.sizes
+#     TMP_GNEOME=${LONG_STITCH_OUT}/genome
 
-    if [ ! -e ${TMP_READS}.fa.gz ]; then
-        zcat ${ONT_READS_IN} | sed -n '1~4s/^@/>/p;2~4p' | gzip > ${TMP_READS}.fa.gz
-    fi
+#     if [ ! -e ${TMP_READS}.fa.gz ]; then
+#         zcat ${ONT_READS_IN} | sed -n '1~4s/^@/>/p;2~4p' | gzip > ${TMP_READS}.fa.gz
+#     fi
 
-    if [ ! -e ${GENOME_SIZES} ]; then
-        faidx ${FIXED_N_ASSEMBLY} -i chromsizes > ${GENOME_SIZES}
-    fi
+#     if [ ! -e ${GENOME_SIZES} ]; then
+#         faidx ${FIXED_N_ASSEMBLY} -i chromsizes > ${GENOME_SIZES}
+#     fi
 
-    if [ ! -e ${TMP_GNEOME}.fa ]; then
-        cp ${FIXED_N_ASSEMBLY} ${TMP_GNEOME}.fa
-    fi
+#     if [ ! -e ${TMP_GNEOME}.fa ]; then
+#         cp ${FIXED_N_ASSEMBLY} ${TMP_GNEOME}.fa
+#     fi
 
-    GENOME_SIZE=$(awk '{sum+=$2;} END{print sum;}' ${GENOME_SIZES})
-    echo "Genome size of fixed_n is ${GENOME_SIZE}"
+#     GENOME_SIZE=$(awk '{sum+=$2;} END{print sum;}' ${GENOME_SIZES})
+#     echo "Genome size of fixed_n is ${GENOME_SIZE}"
 
-    cd ${LONG_STITCH_OUT}
-    longstitch run draft=genome reads=reads span=10 k_ntLink=24 w=100
+#     cd ${LONG_STITCH_OUT}
+#     longstitch run draft=genome reads=reads span=10 k_ntLink=24 w=100
 
+#     REPEAT_EXTENDED_GENOME=$(realpath ./genome.k24.w100.tigmint-ntLink.longstitch-scaffolds.fa)
 
-    conda deactivate
-    conda activate ont_assembly
-}
+#     conda deactivate
+#     conda activate ont_assembly
+# }
 
-extend_repeats
-
-
-# STEP ?: compare the assemblies
-
-exit # for now we skip this step
-
-if [ ! -e ${DATA_DIR}/comparison/HGAP3_Tb427v10.sorted.fasta ];then
-    fassort ${GENOME_FASTA_IN} > ${DATA_DIR}/comparison/HGAP3_Tb427v10.sorted.fasta
-    fassort ${OUTPUT_ASSEMBLY} > ${DATA_DIR}/comparison/new.sorted.fasta
-fi 
+#extend_repeats_long_stitch
 
 
-if [ ! -e ${MINIM_OUT_FILE}.paf ];then
-    minimap2 -x asm5 ${DATA_DIR}/comparison/new.sorted.fasta ${DATA_DIR}/comparison/HGAP3_Tb427v10.sorted.fasta > ${MINIM_OUT_FILE}.paf
-fi 
 
-if [ ! -e ${DIFFERENCES_OUT_FILE}.paf ];then
-    python3 ../../scripts/differences_from_paf.py ${MINIM_OUT_FILE}.paf > ${DIFFERENCES_OUT_FILE}.paf
-fi 
+
+
 
