@@ -12,7 +12,7 @@ def close_annotation_in_gff(annotation, remaining_gaps, fixed_gaps=None):
             if anno_type == "gap":
                 if not contig in gaps:
                     gaps[contig] = []
-                gaps[contig].append([int(start), True, False, source, end, extra])
+                gaps[contig].append([int(start), "closedgap", source, end, extra])
             else:
                 print(line[:-1])
 
@@ -25,17 +25,23 @@ def close_annotation_in_gff(annotation, remaining_gaps, fixed_gaps=None):
             closest_gap = None
             closest_distance = None
 
-            for idx, gap in enumerate(gaps[contig]):
-                o_start = gap[0]
-                dist = abs(o_start - int(start))
+            if contig in gaps:
+                for idx, gap in enumerate(gaps[contig]):
+                    o_start = gap[0]
+                    dist = abs(o_start - int(start))
 
-                if closest_distance is None or dist < closest_distance:
-                    closest_gap = idx
-                    closest_distance = dist
+                    # @todo @fixme i cannot just pick the second closest gap here
+                    # I have to check properly, why multiple gaps in the outcome assembly are close to the same gap on the reference assembly
+                    if (closest_distance is None or dist < closest_distance) and gap[1] == "closedgap":
+                        closest_gap = idx
+                        closest_distance = dist
+            else:
+                print("trying to state that gap on", contig, " is still open. however there is no gap to be found.", file=sys.stderr)
 
             if not closest_gap is None:
-                assert gaps[contig][closest_gap][1] == True
-                gaps[contig][closest_gap][1] = False
+                if gaps[contig][closest_gap][1] == "gap":
+                    print("Gap '", contig, closest_gap, "' already designated as unfixed.", file=sys.stderr)
+                gaps[contig][closest_gap][1] = "gap"
     if not fixed_gaps is None:
         with fileinput.input(fixed_gaps) as in_file:
             for line in in_file:
@@ -51,20 +57,21 @@ def close_annotation_in_gff(annotation, remaining_gaps, fixed_gaps=None):
                         o_start = gap[0]
                         dist = abs(o_start - int(start))
 
-                        if closest_distance is None or dist < closest_distance:
+                        # @todo @fixme same as above
+                        if (closest_distance is None or dist < closest_distance) and gap[1] == "closedgap":
                             closest_gap = idx
                             closest_distance = dist
 
                     if not closest_gap is None:
-                        assert gaps[contig][closest_gap][2] == False
-                        gaps[contig][closest_gap][2] = True
+                        if gaps[contig][closest_gap][1] != "closedgap":
+                            print("Gap", contig, closest_gap, gaps[contig][closest_gap][1], 
+                                  "not closed before making it", anno_type, file=sys.stderr)
+                        gaps[contig][closest_gap][1] = anno_type
                 else:
                     print(line[:-1], "not found", file=sys.stderr)
     for contig, gap_list in gaps.items():
-        for start, is_closed, was_fixed, source, end, extra in gap_list:
-            if was_fixed and not is_closed:
-                print(contig, ":", int(start)//1000, "kbp claims to be fixed but is not closed", file=sys.stderr)
-            print(contig, source, "fixedgap" if was_fixed else ("closedgap" if is_closed else "gap"), start, end, *extra, sep="\t")
+        for start, gap_type, source, end, extra in gap_list:
+            print(contig, source, gap_type, start, end, *extra, sep="\t")
 
 
 if __name__ == "__main__":

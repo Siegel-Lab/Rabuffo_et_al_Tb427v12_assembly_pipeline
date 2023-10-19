@@ -13,31 +13,37 @@ set -e
 ## STEP 1: configure
 
 
-GENOME_FASTA_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
-GFF_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
+GENOME_FASTA_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta)
+GFF_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
 ONT_READS_IN=$(realpath ../data/in/ont_reads_in/duplex_reads.fastq.gz)
 MASUCRA_BIN=$(realpath ../bin/MaSuRCA-4.1.0/bin)
-COMPARISON_DIR=$(realpath ../data/out/comparison)
-VIRT_PAIR_R_DIST=$(realpath ../data/out/virtual_paired_read_dist)
-LONG_STITCH_OUT=$(realpath ../data/out/long_stitch_out)
-MASK_REPEATS_DIR=$(realpath ../data/out/mask_repeats)
-SAMBA_OUT=$(realpath ../data/out/samba_out_1)
+COMPARISON_DIR=../data/out/comparison
+VIRT_PAIR_R_DIST=../data/out/virtual_paired_read_dist
+MASK_REPEATS_DIR=../data/out/mask_repeats
+SAMBA_OUT=../data/out/samba_out_1
 
 BIN_DIR=$(realpath ../bin/)
-OVERVIEW_DIR=$(realpath ../data/out/overview)
+OVERVIEW_DIR=../data/out/overview
 DATA_DIR=$(realpath ../data)
 SCRIPTS_DIR=$(realpath .)
 
+
 setup() {
+    mkdir -p ${DATA_DIR}/out
     mkdir -p ${COMPARISON_DIR}
+    COMPARISON_DIR=$(realpath ${COMPARISON_DIR})
     mkdir -p ${VIRT_PAIR_R_DIST}
-    mkdir -p ${LONG_STITCH_OUT}
+    VIRT_PAIR_R_DIST=$(realpath ${VIRT_PAIR_R_DIST})
     mkdir -p ${MASK_REPEATS_DIR}
+    MASK_REPEATS_DIR=$(realpath ${MASK_REPEATS_DIR})
     mkdir -p ${OVERVIEW_DIR}
+    OVERVIEW_DIR=$(realpath ${OVERVIEW_DIR})
     mkdir -p ${SAMBA_OUT}
+    SAMBA_OUT=$(realpath ${SAMBA_OUT})
 }
 
 setup
+
 
 
 mask_repeats(){
@@ -67,12 +73,15 @@ close_gaps()
 
     # .patches.coords seems interesting
 
-    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/HGAP3_Tb427v10.fasta.split.joined.fa
+    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/HGAP3_Tb427v10_diploid_scaffolded.fasta.split.joined.fa
     FIXED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fixed_n.fasta
 
     if [ ! -e ${FIXED_N_ASSEMBLY} ];then
         python3 ${SCRIPTS_DIR}/fixup_number_of_n.py ${FILLED_N_ASSEMBLY} 100 1000 > ${FIXED_N_ASSEMBLY}
 
+    fi
+    if [ ! -e ${REFERENCE}.gaps.gff3 ];then
+        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${REFERENCE} > ${REFERENCE}.gaps.gff3
     fi
     if [ ! -e ${FIXED_N_ASSEMBLY}.gaps.gff3 ];then
         python3 ${SCRIPTS_DIR}/annotate_gaps.py ${FIXED_N_ASSEMBLY} > ${FIXED_N_ASSEMBLY}.gaps.gff3
@@ -185,7 +194,7 @@ virtual_paired_read_distance ${GENOME_FASTA_IN} "referece"
 
 # check gap spanning
 if [ ! -e ${VIRT_PAIR_R_DIST}/gap_spanning_reads ]; then
-    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${GFF_IN} > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
+    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${GENOME_FASTA_IN}.gaps.gff3 > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
 fi
 
 virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
@@ -196,21 +205,27 @@ virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
 
 generate_overview_pic(){
 
-    CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_IN} | awk '{print $1}' | sort | uniq)
+    GFF_GAPLESS=${OVERVIEW_DIR}/reference.gapless.gff3
+    GFF_FIXED_GAP=${OVERVIEW_DIR}/reference.gap_annotation_fixed.gff3
+
 
     if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 ]; then
-        python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
+        grep -v "gap" ${GFF_IN} > ${GFF_GAPLESS}
+        cat ${GFF_GAPLESS} ${GENOME_FASTA_IN}.gaps.gff3 > ${GFF_FIXED_GAP}
+
+        python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
     fi
+    
+    CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_FIXED_GAP} | awk '{print $1}' | sort | uniq)
 
     if [ ! -e ${OVERVIEW_DIR}/genome_overview_gaps.svg ]; then
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
             --gff_file ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 \
-            --feature_types "pseudogene" "Centromere" "gap" "closedgap" \
+            --feature_types "gene" "Centromere" "gap" "closedgap" \
             --alpha 0.99 \
-            --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=red" \
-            --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
+            --feature_color_mapping "Centromere=blue;gap=purple;gene=lightgrey;closedgap=purple" \
             --x_tick_distance 500000 \
             --font_size 1 \
             --output_file ${OVERVIEW_DIR}/genome_overview_gaps.svg
@@ -221,10 +236,9 @@ generate_overview_pic(){
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
             --gff_file ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 \
-            --feature_types "pseudogene" "Centromere" "gap" "closedgap" \
+            --feature_types "gene" "Centromere" "gap" "closedgap" \
             --alpha 0.99 \
-            --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=green" \
-            --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
+            --feature_color_mapping "Centromere=blue;gap=purple;gene=lightgrey;closedgap=green" \
             --x_tick_distance 500000 \
             --font_size 1 \
             --output_file ${OVERVIEW_DIR}/genome_overview_closed.svg
@@ -233,16 +247,15 @@ generate_overview_pic(){
     if [ ! -e ${OVERVIEW_DIR}/genome_overview_fixed.svg ]; then
         if [ -e ${VIRT_PAIR_R_DIST}/closed_gaps_analysis.gff ]; then
             if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 ]; then
-                python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${FIXED_N_ASSEMBLY}.gaps.gff3 ${VIRT_PAIR_R_DIST}/closed_gaps_analysis.gff > ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3
+                python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 ${VIRT_PAIR_R_DIST}/closed_gaps_analysis.gff > ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3
             fi
             conda activate GENEastics_env
             python3 ${BIN_DIR}/geneastics.py \
                 --replicons ${CONTIGS_WITH_GAPS} \
                 --gff_file ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 \
-                --feature_types "pseudogene" "Centromere" "gap" "closedgap" "fixedgap" \
+                --feature_types "gene" "Centromere" "gap" "closedgap" "fixedgap" "notenoughdatagap" \
                 --alpha 0.99 \
-                --feature_color_mapping "Centromere=blue;gap=red;pseudogene=lightgrey;closedgap=orange;fixedgap=green" \
-                --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|Grey|||Name|Similar to Tb427VSG|Grey|||product|Trypanosomal VSG|Grey' \
+                --feature_color_mapping "Centromere=blue;gap=purple;gene=lightgrey;closedgap=red;notenoughdatagap=orange;fixedgap=green" \
                 --x_tick_distance 500000 \
                 --font_size 1 \
                 --output_file ${OVERVIEW_DIR}/genome_overview_fixed.svg
