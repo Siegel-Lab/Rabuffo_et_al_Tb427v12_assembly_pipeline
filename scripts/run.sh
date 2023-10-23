@@ -15,12 +15,15 @@ set -e
 
 GENOME_FASTA_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta)
 GFF_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
+REF_CENTRO=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
+GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
 ONT_READS_IN=$(realpath ../data/in/ont_reads_in/duplex_reads.fastq.gz)
 MASUCRA_BIN=$(realpath ../bin/MaSuRCA-4.1.0/bin)
 COMPARISON_DIR=../data/out/comparison
 VIRT_PAIR_R_DIST=../data/out/virtual_paired_read_dist
 MASK_REPEATS_DIR=../data/out/mask_repeats
 SAMBA_OUT=../data/out/samba_out_1
+MOVE_ANNO_DIR=../data/out/move_anno_dir
 
 BIN_DIR=$(realpath ../bin/)
 OVERVIEW_DIR=../data/out/overview
@@ -40,20 +43,32 @@ setup() {
     OVERVIEW_DIR=$(realpath ${OVERVIEW_DIR})
     mkdir -p ${SAMBA_OUT}
     SAMBA_OUT=$(realpath ${SAMBA_OUT})
+    mkdir -p ${MOVE_ANNO_DIR}
+    MOVE_ANNO_DIR=$(realpath ${MOVE_ANNO_DIR})
 }
 
 setup
 
 
 
+module load ngs/minimap2/2.10
 mask_repeats(){
     REFERENCE=$1
     REF_NAME=$2
     REPEATS_IN=$3
 
-    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ]; then
-        python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${REPEATS_IN} > ${MASK_REPEATS_DIR}/${REF_NAME}.fasta
-    fi
+    ## first find repeats
+    # align the nanopore data onto the reference
+    # call peaks in the coverage
+
+    if [ ! -e ${MASK_REPEATS_DIR}/ont_reads_anligntment.sam ];then
+        minimap2 -a -x map-ont ${REFERENCE} ${ONT_READS_IN} > ${MASK_REPEATS_DIR}/ont_reads_anligntment.sam
+    fi 
+
+
+    # if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ]; then
+    #     python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${REPEATS_IN} > ${MASK_REPEATS_DIR}/${REF_NAME}.fasta
+    # fi
 }
 
 # mask_repeats ${GENOME_FASTA_IN} "reference" ${DATA_DIR}/in/mask_repeats/manual_repeats.gff
@@ -122,7 +137,6 @@ close_gaps()
 close_gaps ${GENOME_FASTA_IN} reference
 
 
-module load ngs/minimap2/2.10
 module load ngs/samtools/1.9
 compare_assemblies(){
     REFERENCE=$1
@@ -200,7 +214,48 @@ fi
 virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
 
 
+move_annotation(){
+    ANNOTATION=$1
 
+    conda deactivate
+    conda activate ont_assembly_2
+    
+    module load ngs/bedtools2/2.26.0
+    module load ncbi-blast/2.7.1+
+
+    ## Get manual annotations from old genome version
+
+    grep ${ANNOTATION} ${GFF_CENTRO_IN} > ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.gff
+    # sed 's/core/A/g' ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.core.gff | sed 's/3A/A/g' - | sed 's/5A/A/g' - |  \
+    #         grep -v "3B" | grep -v "5B" > ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.A.gff
+    # sed 's/core/B/g' ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.core.gff | sed 's/3B/B/g' - | sed 's/5B/B/g' - |  \
+    #         grep -v "3A" | grep -v "5A" > ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.B.gff
+    # cat ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.A.gff ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.B.gff > ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.gff
+
+    ## Crop coordinates on the entries based on chromosome length
+    # Get chromosome lengths
+
+    python3 $BIN_DIR/seq_length.py ${REF_CENTRO} > ${MOVE_ANNO_DIR}/genome.sizes
+
+    # Crop coordinates based on chromosome length
+
+    bedtools slop -i ${MOVE_ANNO_DIR}/${ANNOTATION}.filtered.gff -g ${MOVE_ANNO_DIR}/genome.sizes -b 0 > ${MOVE_ANNO_DIR}/${ANNOTATION}.cropped.gff
+
+    ## Get fasta sequences for each entry and add it to the annotation file
+
+    bedtools getfasta -tab -fi ${REF_CENTRO} -bed ${MOVE_ANNO_DIR}/${ANNOTATION}.cropped.gff > ${MOVE_ANNO_DIR}/${ANNOTATION}.sequences.fasta
+
+    paste ${MOVE_ANNO_DIR}/${ANNOTATION}.cropped.gff ${MOVE_ANNO_DIR}/${ANNOTATION}.sequences.fasta > ${MOVE_ANNO_DIR}/${ANNOTATION}.sequence_annotation.out
+
+    ## Run a modified version of Konrad's Förstner script to transfer annotation
+
+    python3 $BIN_DIR/map_annotation_via_string_match.py ${FIXED_N_ASSEMBLY} ${MOVE_ANNO_DIR}/${ANNOTATION}.sequence_annotation.out ${MOVE_ANNO_DIR} ${MOVE_ANNO_DIR}/${ANNOTATION}.transfered.gff
+
+    conda deactivate
+    conda activate ont_assembly
+}
+
+move_annotation "Centromere"
 
 
 generate_overview_pic(){
@@ -214,7 +269,7 @@ generate_overview_pic(){
         cat ${GFF_GAPLESS} ${GENOME_FASTA_IN}.gaps.gff3 > ${GFF_FIXED_GAP}
 
         python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
-    fi
+    fiq
     
     CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_FIXED_GAP} | awk '{print $1}' | sort | uniq)
 
@@ -268,6 +323,10 @@ generate_overview_pic(){
 
 
 generate_overview_pic
+
+
+
+
 
 
 ## hmm this does not work as i want
