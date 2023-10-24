@@ -52,6 +52,8 @@ setup
 
 
 module load ngs/minimap2/2.10
+module load ngs/samtools/1.9
+module load ngs/deeptools/3.5.0
 mask_repeats(){
     REFERENCE=$1
     REF_NAME=$2
@@ -61,17 +63,22 @@ mask_repeats(){
     # align the nanopore data onto the reference
     # call peaks in the coverage
 
-    if [ ! -e ${MASK_REPEATS_DIR}/ont_reads_anligntment.sam ];then
-        minimap2 -a -x map-ont ${REFERENCE} ${ONT_READS_IN} > ${MASK_REPEATS_DIR}/ont_reads_anligntment.sam
+    if [ ! -e ${MASK_REPEATS_DIR}/ont_reads_anligntment.sorted.bam ];then
+        minimap2 -a -x map-ont ${REFERENCE} ${ONT_READS_IN} | samtools view -bS - > ${MASK_REPEATS_DIR}/ont_reads_anligntment.bam
+        samtools sort -@ 18 ${MASK_REPEATS_DIR}/ont_reads_anligntment.sorted.bam
+        samtools index -@ 18 ${MASK_REPEATS_DIR}/ont_reads_anligntment.sorted.bam
     fi 
 
+    if [ ! -e ${MASK_REPEATS_DIR}/ont_reads_anligntment.bw ];then
+        bamCoverage --bam ${MASK_REPEATS_DIR}/ont_reads_anligntment.sorted.bam -o ${MASK_REPEATS_DIR}/ont_reads_anligntment.bw
+    fi 
 
     # if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ]; then
     #     python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${REPEATS_IN} > ${MASK_REPEATS_DIR}/${REF_NAME}.fasta
     # fi
 }
 
-# mask_repeats ${GENOME_FASTA_IN} "reference" ${DATA_DIR}/in/mask_repeats/manual_repeats.gff
+mask_repeats ${GENOME_FASTA_IN} "reference" ${DATA_DIR}/in/mask_repeats/manual_repeats.gff
 
 
 close_gaps()
@@ -137,7 +144,6 @@ close_gaps()
 close_gaps ${GENOME_FASTA_IN} reference
 
 
-module load ngs/samtools/1.9
 compare_assemblies(){
     REFERENCE=$1
     REF_NAME=$2
@@ -255,25 +261,25 @@ move_annotation(){
     conda activate ont_assembly
 }
 
-move_annotation "Centromere"
+# move_annotation "Centromere"
 
 
 generate_overview_pic(){
-
     GFF_GAPLESS=${OVERVIEW_DIR}/reference.gapless.gff3
     GFF_FIXED_GAP=${OVERVIEW_DIR}/reference.gap_annotation_fixed.gff3
 
 
     if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 ]; then
         grep -v "gap" ${GFF_IN} > ${GFF_GAPLESS}
-        cat ${GFF_GAPLESS} ${GENOME_FASTA_IN}.gaps.gff3 > ${GFF_FIXED_GAP}
+        cat ${GFF_GAPLESS} ${GENOME_FASTA_IN}.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff > ${GFF_FIXED_GAP}
 
         python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
-    fiq
+    fi
     
-    CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_FIXED_GAP} | awk '{print $1}' | sort | uniq)
+    CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_FIXED_GAP} | awk '{print $1} END { print "Chr2_B_Tb427v10" }' | sort | uniq)
 
     if [ ! -e ${OVERVIEW_DIR}/genome_overview_gaps.svg ]; then
+        conda deactivate
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
@@ -287,6 +293,7 @@ generate_overview_pic(){
         conda deactivate
     fi
     if [ ! -e ${OVERVIEW_DIR}/genome_overview_closed.svg ]; then
+        conda deactivate
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
@@ -304,6 +311,7 @@ generate_overview_pic(){
             if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 ]; then
                 python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 ${VIRT_PAIR_R_DIST}/closed_gaps_analysis.gff > ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3
             fi
+            conda deactivate
             conda activate GENEastics_env
             python3 ${BIN_DIR}/geneastics.py \
                 --replicons ${CONTIGS_WITH_GAPS} \
@@ -317,6 +325,7 @@ generate_overview_pic(){
             conda deactivate
         fi
     fi
+    conda activate ont_assembly
 }
 
 

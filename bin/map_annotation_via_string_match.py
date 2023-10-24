@@ -88,12 +88,14 @@ def search_by_blast(ref_seq, query_seq, seq_id_query, seq_id_ref,
     else:
         return None, None
     
-            
+NEXT_AVAILABLE_ID = 0
 def _write_entry(row, start_pos, end_pos, new_replicon_name, output_fh):
     row = row[:9]
     row[0] = new_replicon_name
     row[3] = str(start_pos)
     row[4] = str(end_pos)
+    row[8] = "ID=" + new_replicon_name + "_" + str(NEXT_AVAILABLE_ID)
+    NEXT_AVAILABLE_ID += 1
     output_fh.write("\t".join(row) + "\n")
     
 
