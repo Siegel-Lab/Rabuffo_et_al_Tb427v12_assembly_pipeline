@@ -34,7 +34,7 @@ def get_average_distance_deviation(reads_in, mates_in, expected_distances_file):
             assert not qname in stored_reads
             stored_reads[qname] = [rname, pos, rev_stnd]
 
-    print("#columns:read_name distance_deviation")
+    print("#columns:read_name distance_deviation expected_distance chr rpos1 rpos2 strand")
     with fileinput.input(mates_in) as in_file3:
         for line in in_file3:
             qname, flag, rname, pos, _, cigar, *_ = line.strip().split()
@@ -54,7 +54,8 @@ def get_average_distance_deviation(reads_in, mates_in, expected_distances_file):
                 dist = pos - o_rpos
                 if rev_stnd:
                     dist = o_rpos - pos
-                print(qname, dist - expected_distances[qname], sep='\t')
+                print(qname, dist - expected_distances[qname], expected_distances[qname], rname, pos, o_rpos, 
+                      not rev_stnd, sep='\t')
 
 
 if __name__ == "__main__":
