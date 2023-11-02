@@ -22,19 +22,17 @@ def mask_regions(genome_in, gff_in, num_n=1000):
         for line in in_file:
             if line[0] == "#":
                 continue
-            contig, _, repeat, start, end, *extra = line.split("\t")
-            if repeat != "repeat":
-                continue
+            contig, _, _, start, end, *_ = line.split("\t")
             start = int(start)
             end = int(end)
             if contig not in to_mask:
                 to_mask[contig] = []
             to_mask[contig].append((start, end))
     for contig_name, contig in iterate_contigs(genome_in):
-        if contig_name not in to_mask:
-            continue
-        for start, end in to_mask[contig_name]:
-            contig = contig[:start] + "N" * num_n + contig[end:]
+        if contig_name in to_mask:
+            to_mask[contig_name].sort(reverse=True)
+            for start, end in to_mask[contig_name]:
+                contig = contig[:start] + "N" * num_n + contig[end:]
         print(">" + contig_name)
         for i in range(0, len(contig), 80):
             print(contig[i:i+80])
