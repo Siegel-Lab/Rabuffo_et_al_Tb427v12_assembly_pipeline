@@ -61,6 +61,46 @@ module load ngs/deeptools/3.5.0
 module load ngs/bedtools2/2.28.0
 
 
+virtual_paired_read_distance(){
+    GENOME=$1
+    NAME=$2
+    # create virtual illumina reads from the ont reads
+    # align them to both assemblies and check their expected to actual distance
+    # this is a measure of how well the assembly is doing
+
+    # lets create the virtual illumina reads
+
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ]; then
+        zcat ${ONT_READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances 2000 500
+    fi 
+
+    
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam ]; then
+        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.reads.minimap.errlog
+        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.mates.minimap.errlog
+    fi 
+
+    # filter out low mapping quality reads
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ]; then
+        samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam 
+        samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam 
+    fi 
+
+    # compute distances
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ]; then
+        python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances > ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation
+    fi
+
+    # compute distances
+    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.read_pos_and_strnd ]; then
+        python3 ${SCRIPTS_DIR}/get_read_pos_and_strand.py ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam > ${VIRT_PAIR_R_DIST}/${NAME}.read_pos_and_strnd
+    fi
+
+    echo "Distance deviation for ${NAME} is stored in file ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation"
+}
+
+
+
 
 close_gaps()
 {
@@ -85,7 +125,7 @@ close_gaps()
 
     fi
     if [ ! -e ${DATA_DIR}/out/samba_out_1/${REF_NAME}.gaps.gff3 ];then
-        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${REFERENCE} > ${DATA_DIR}/out/samba_out_1/${REF_NAME}.gaps.gff3
+        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta > ${DATA_DIR}/out/samba_out_1/${REF_NAME}.gaps.gff3
     fi
     if [ ! -e ${FIXED_N_ASSEMBLY}.gaps.gff3 ];then
         python3 ${SCRIPTS_DIR}/annotate_gaps.py ${FIXED_N_ASSEMBLY} > ${FIXED_N_ASSEMBLY}.gaps.gff3
@@ -147,77 +187,17 @@ compare_assemblies(){
     fi 
 }
 
-compare_assemblies ${GENOME_FASTA_IN} "reference" ${FIXED_N_ASSEMBLY} "fixed_n"
+compare_assemblies ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta "reference" ${FIXED_N_ASSEMBLY} "fixed_n"
 
-virtual_paired_read_distance(){
-    GENOME=$1
-    NAME=$2
-    # create virtual illumina reads from the ont reads
-    # align them to both assemblies and check their expected to actual distance
-    # this is a measure of how well the assembly is doing
-
-    # lets create the virtual illumina reads
-
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ]; then
-        zcat ${ONT_READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances 2000 500
-    fi 
-
-    
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam ]; then
-        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.reads.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.reads.minimap.errlog
-        minimap2 -ax map-ont ${GENOME} ${VIRT_PAIR_R_DIST}/${NAME}.mates.fasta > ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam 2> ${VIRT_PAIR_R_DIST}/${NAME}.mates.minimap.errlog
-    fi 
-
-    # filter out low mapping quality reads
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ]; then
-        samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.reads.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam 
-        samtools view -Sq 30 -F 2304 ${VIRT_PAIR_R_DIST}/${NAME}.mates.sam > ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam 
-    fi 
-
-    # compute distances
-    if [ ! -e ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ]; then
-        python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${VIRT_PAIR_R_DIST}/${NAME}.filtered.reads.sam ${VIRT_PAIR_R_DIST}/${NAME}.filtered.mates.sam ${VIRT_PAIR_R_DIST}/${NAME}.expected_distances > ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation
-    fi
-
-    echo "Distance deviation for ${NAME} is stored in file ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation"
-}
-
-
-
-virtual_paired_read_distance ${GENOME_FASTA_IN} "referece"
-
+virtual_paired_read_distance ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta "referece"
 
 
 # check gap spanning
 if [ ! -e ${VIRT_PAIR_R_DIST}/gap_spanning_reads ]; then
-    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
+    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${DATA_DIR}/out/samba_out_1/referece.gaps.gff3 > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
 fi
 
 virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
-
-
-mask_repeats(){
-    REFERENCE=$1
-    REF_NAME=$2
-
-    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff ];then
-        python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff
-    fi
-
-    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ];then
-        python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff > ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta
-    fi
-
-    # count the number of Ns in the input genome
-    echo "N's in input assembly (a gap consists of 1,000 Ns):"
-    grep -o "N" ${REFERENCE} | wc -l
-
-    # count the number of Ns in the output genome
-    echo "N's in masked assembly (here, a gap consists of 1,000 Ns):"
-    grep -o "N" ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta | wc -l
-}
-
-mask_repeats ${GENOME_FASTA_IN} "reference"
 
 
 move_annotation(){
@@ -333,9 +313,32 @@ generate_overview_pic(){
 }
 
 
-
-
 generate_overview_pic
+
+
+mask_repeats(){
+    REFERENCE=$1
+    REF_NAME=$2
+
+    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff ];then
+        python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff
+    fi
+
+    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ];then
+        python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff > ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta
+    fi
+
+    # count the number of Ns in the input genome
+    echo "N's in input assembly (a gap consists of 1,000 Ns):"
+    grep -o "N" ${REFERENCE} | wc -l
+
+    # count the number of Ns in the output genome
+    echo "N's in masked assembly (here, a gap consists of 1,000 Ns):"
+    grep -o "N" ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta | wc -l
+}
+
+exit
+mask_repeats ${FIXED_N_ASSEMBLY} "fixed_n"
 
 
 
