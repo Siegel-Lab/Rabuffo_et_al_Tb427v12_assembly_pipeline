@@ -4,4 +4,4 @@ data/*
 data_backup*
 *.pyc
 *.o
-slurm-*
+*/slurm_out/*

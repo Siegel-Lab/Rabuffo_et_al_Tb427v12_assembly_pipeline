@@ -90,6 +90,7 @@ def search_by_blast(ref_seq, query_seq, seq_id_query, seq_id_ref,
     
 NEXT_AVAILABLE_ID = 0
 def _write_entry(row, start_pos, end_pos, new_replicon_name, output_fh):
+    global NEXT_AVAILABLE_ID
     row = row[:9]
     row[0] = new_replicon_name
     row[3] = str(start_pos)

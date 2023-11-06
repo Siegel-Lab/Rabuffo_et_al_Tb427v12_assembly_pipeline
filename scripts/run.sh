@@ -3,7 +3,8 @@
 #SBATCH --mem=500G
 #SBATCH --time=7-00:00:00
 #SBATCH --partition=fat
-#SBATCH --job-name=samba
+#SBATCH --job-name=ont_try_assembly
+#SBATCH -o slurm_out/ont_assembly-%j.out
 
 source /home/mschmidt/.miniconda3/etc/profile.d/conda.sh
 
@@ -14,12 +15,13 @@ set -e
 
 
 
-GENOME_FASTA_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta)
+GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
+GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
 GFF_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
 ANA_LYSIS_IN=$(realpath ../data/in/analysis_in)
 REF_CENTRO=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
 GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
-ONT_READS_IN=$(realpath ../data/in/ont_reads_in/our_reads.nanopore.fastq.gz)
+ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.nanopore.gz)
 MASUCRA_BIN=$(realpath ../bin/MaSuRCA-4.1.0/bin)
 COMPARISON_DIR=../data/out/comparison
 VIRT_PAIR_R_DIST=../data/out/virtual_paired_read_dist
@@ -60,6 +62,93 @@ module load ngs/bedtools2/2.28.0
 
 
 
+close_gaps()
+{
+    REFERENCE_FOLDER=$1
+    REFERENCE_NAME=$2
+    REF_NAME=$3
+
+    cd ${DATA_DIR}/out/samba_out_1
+
+    ${MASUCRA_BIN}/close_scaffold_gaps.sh -r ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta -q ${ONT_READS_IN} -t 18 -m 500 -i 95 -d ont
+
+    # .valid_join_pairs.txt contains how scaffolds have been split into contigs
+    # .fasta.split.joined.fa is the main outputfile
+
+    # .patches.coords seems interesting
+
+    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REFERENCE_NAME}.masked.fasta.split.joined.fa
+    FIXED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fixed_n.fasta
+
+    if [ ! -e ${FIXED_N_ASSEMBLY} ];then
+        python3 ${SCRIPTS_DIR}/fixup_number_of_n.py ${FILLED_N_ASSEMBLY} 100 1000 > ${FIXED_N_ASSEMBLY}
+
+    fi
+    if [ ! -e ${DATA_DIR}/out/samba_out_1/${REF_NAME}.gaps.gff3 ];then
+        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${REFERENCE} > ${DATA_DIR}/out/samba_out_1/${REF_NAME}.gaps.gff3
+    fi
+    if [ ! -e ${FIXED_N_ASSEMBLY}.gaps.gff3 ];then
+        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${FIXED_N_ASSEMBLY} > ${FIXED_N_ASSEMBLY}.gaps.gff3
+    fi
+
+    # count the number of Ns in the output genome
+    echo "N's in fixed_n assembly (here, a gap consists of 1,000 Ns):"
+    grep -o "N" ${FIXED_N_ASSEMBLY} | wc -l
+
+    ############################################
+    ## We have 49 gaps in the original assembly
+    ## And 17 in the fixed one
+    ############################################
+
+
+    # count the number of contigs in the original assembly
+    echo "Number of contigs in original assembly:"
+    grep -c ">" ${REFERENCE}
+
+    # count the number of contigs in the output assembly
+    echo "Number of contigs in n_filled assembly:"
+    grep -c ">" ${FIXED_N_ASSEMBLY}
+
+    
+    ############################################
+    ## We have 317 contigs in the original assembly
+    ## And 308 in the fixed one
+    ## 
+    ## In total 32 gaps have been closed?, 9 of them using a unitig present in the original assembly
+    ##
+    ############################################
+}
+
+close_gaps ${GENOME_FOLDER_IN} ${GENOME_FILENAME_IN} reference
+
+
+compare_assemblies(){
+    REFERENCE=$1
+    REF_NAME=$2
+    QUERY=$3
+    Q_NAME=$4
+    echo ${REFERENCE} ${REF_NAME} ${QUERY} ${Q_NAME}
+
+    
+    if [ ! -e ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta ];then
+        cat ${REFERENCE} | fassort > ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta
+    fi 
+    if [ ! -e ${DATA_DIR}/comparison/${Q_NAME}.sorted.fasta ];then
+        cat ${QUERY} | fassort > ${DATA_DIR}/out/comparison/${Q_NAME}.sorted.fasta
+    fi 
+
+
+    if [ ! -e ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf ];then
+        minimap2 -x asm5 ${DATA_DIR}/out/comparison/${Q_NAME}.sorted.fasta ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta > ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf
+    fi 
+
+    if [ ! -e ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.differences.paf ];then
+        python3 ${SCRIPTS_DIR}/differences_from_paf.py ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf > ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.differences.paf
+    fi 
+}
+
+compare_assemblies ${GENOME_FASTA_IN} "reference" ${FIXED_N_ASSEMBLY} "fixed_n"
+
 virtual_paired_read_distance(){
     GENOME=$1
     NAME=$2
@@ -98,13 +187,25 @@ virtual_paired_read_distance(){
 virtual_paired_read_distance ${GENOME_FASTA_IN} "referece"
 
 
+
+# check gap spanning
+if [ ! -e ${VIRT_PAIR_R_DIST}/gap_spanning_reads ]; then
+    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
+fi
+
+virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
+
+
 mask_repeats(){
     REFERENCE=$1
     REF_NAME=$2
-    REPEATS_IN=$3
+
+    if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff ];then
+        python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff
+    fi
 
     if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ];then
-        python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${REPEATS_IN} > ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta
+        python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff > ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta
     fi
 
     # count the number of Ns in the input genome
@@ -116,103 +217,7 @@ mask_repeats(){
     grep -o "N" ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta | wc -l
 }
 
-mask_repeats ${GENOME_FASTA_IN} "reference" ${ANA_LYSIS_IN}/mis_assemblies.gff
-
-
-close_gaps()
-{
-    REFERENCE=$1
-    REF_NAME=$2
-
-    cd ${DATA_DIR}/out/samba_out_1
-
-    ${MASUCRA_BIN}/close_scaffold_gaps.sh -r ${REFERENCE} -q ${ONT_READS_IN} -t 18 -m 500 -i 95 -d ont
-
-    # .valid_join_pairs.txt contains how scaffolds have been split into contigs
-    # .fasta.split.joined.fa is the main outputfile
-
-    # .patches.coords seems interesting
-
-    FILLED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.masked.fasta.split.joined.fa
-    FIXED_N_ASSEMBLY=${DATA_DIR}/out/samba_out_1/${REF_NAME}.fixed_n.fasta
-
-    if [ ! -e ${FIXED_N_ASSEMBLY} ];then
-        python3 ${SCRIPTS_DIR}/fixup_number_of_n.py ${FILLED_N_ASSEMBLY} 100 1000 > ${FIXED_N_ASSEMBLY}
-
-    fi
-    if [ ! -e ${REFERENCE}.gaps.gff3 ];then
-        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${REFERENCE} > ${REFERENCE}.gaps.gff3
-    fi
-    if [ ! -e ${FIXED_N_ASSEMBLY}.gaps.gff3 ];then
-        python3 ${SCRIPTS_DIR}/annotate_gaps.py ${FIXED_N_ASSEMBLY} > ${FIXED_N_ASSEMBLY}.gaps.gff3
-    fi
-
-    # count the number of Ns in the output genome
-    echo "N's in fixed_n assembly (here, a gap consists of 1,000 Ns):"
-    grep -o "N" ${FIXED_N_ASSEMBLY} | wc -l
-
-    ############################################
-    ## We have 49 gaps in the original assembly
-    ## And 17 in the fixed one
-    ############################################
-
-
-    # count the number of contigs in the original assembly
-    echo "Number of contigs in original assembly:"
-    grep -c ">" ${REFERENCE}
-
-    # count the number of contigs in the output assembly
-    echo "Number of contigs in n_filled assembly:"
-    grep -c ">" ${FIXED_N_ASSEMBLY}
-
-    
-    ############################################
-    ## We have 317 contigs in the original assembly
-    ## And 308 in the fixed one
-    ## 
-    ## In total 32 gaps have been closed?, 9 of them using a unitig present in the original assembly
-    ##
-    ############################################
-}
-
-close_gaps ${MASK_REPEATS_DIR}/reference.masked.fasta reference
-
-
-compare_assemblies(){
-    REFERENCE=$1
-    REF_NAME=$2
-    QUERY=$3
-    Q_NAME=$4
-    echo ${REFERENCE} ${REF_NAME} ${QUERY} ${Q_NAME}
-
-    
-    if [ ! -e ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta ];then
-        cat ${REFERENCE} | fassort > ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta
-    fi 
-    if [ ! -e ${DATA_DIR}/comparison/${Q_NAME}.sorted.fasta ];then
-        cat ${QUERY} | fassort > ${DATA_DIR}/out/comparison/${Q_NAME}.sorted.fasta
-    fi 
-
-
-    if [ ! -e ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf ];then
-        minimap2 -x asm5 ${DATA_DIR}/out/comparison/${Q_NAME}.sorted.fasta ${DATA_DIR}/out/comparison/${REF_NAME}.sorted.fasta > ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf
-    fi 
-
-    if [ ! -e ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.differences.paf ];then
-        python3 ${SCRIPTS_DIR}/differences_from_paf.py ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.comparison.paf > ${COMPARISON_DIR}/${REF_NAME}.${Q_NAME}.differences.paf
-    fi 
-}
-
-compare_assemblies ${GENOME_FASTA_IN} "reference" ${FIXED_N_ASSEMBLY} "fixed_n"
-
-
-
-# check gap spanning
-if [ ! -e ${VIRT_PAIR_R_DIST}/gap_spanning_reads ]; then
-    python3 ${SCRIPTS_DIR}/spans_gap.py ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${GENOME_FASTA_IN}.gaps.gff3 > ${VIRT_PAIR_R_DIST}/gap_spanning_reads
-fi
-
-virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
+mask_repeats ${GENOME_FASTA_IN} "reference"
 
 
 move_annotation(){
@@ -265,12 +270,12 @@ generate_overview_pic(){
 
     if [ ! -e ${OVERVIEW_DIR}/open_gaps.gff ]; then
         grep -v "gap" ${GFF_IN} > ${GFF_GAPLESS}
-        cat ${GFF_GAPLESS} ${GENOME_FASTA_IN}.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff ${VIRT_PAIR_R_DIST}/mis_assemblies.gff > ${OVERVIEW_DIR}/open_gaps.gff
+        cat ${GFF_GAPLESS} ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff ${ANA_LYSIS_IN}/mis_assemblies.gff > ${OVERVIEW_DIR}/open_gaps.gff
     fi
 
     if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 ]; then
         grep -v "gap" ${GFF_IN} > ${GFF_GAPLESS}
-        cat ${GFF_GAPLESS} ${GENOME_FASTA_IN}.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff > ${GFF_FIXED_GAP}
+        cat ${GFF_GAPLESS} ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff ${ANA_LYSIS_IN}/mis_assemblies.gff > ${GFF_FIXED_GAP}
 
         python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
     fi
