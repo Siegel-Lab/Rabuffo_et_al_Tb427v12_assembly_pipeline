@@ -118,7 +118,7 @@ def merge_overlapping_clusters(new_cluster):
 
     while has_overlapping_clusters(new_cluster):
         new_cluster = merge_overlapping_clusters_helper(new_cluster)
-
+    return new_cluster
 
 if __name__ == "__main__":
     distance_deviation_filename = sys.argv[1] # "../data/out/virtual_paired_read_dist/referece.distance_deviation"
