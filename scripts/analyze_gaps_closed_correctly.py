@@ -63,7 +63,7 @@ def filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict):
 
 
 
-def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_spanning_reads_file, gap_gff_file,
+def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_spanning_reads_file, gaps_old_genome, 
                                   gap_closed_if_fixed_dev_smaller_than=5000, 
                                   max_ref_fixed_diff = 10, max_ref_fixed_sum = 1000):
     ref_names, ref_dev = load_dist_dev(dist_dev_ref_file)
@@ -75,15 +75,13 @@ def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_sp
 
     readnames = filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict)
 
-    gap_pos = load_gaps(gap_gff_file)
+    gap_pos_old_genome = load_gaps(gaps_old_genome)
 
-    
-    gap_names = gap_pos.keys()
+    gap_names = gap_pos_old_genome.keys()
 
-        
     for gap in sorted(gap_names):
         read_names = extract_reads_for_gap(gap, gap_spanning_reads, readnames)
-        chrom, start, end = gap_pos[gap]
+        chrom, start, end = gap_pos_old_genome[gap]
         if len(read_names) > 0:
             read_clusters = filter_clusters(cluster_reads(read_names, ref_dict, fixed_dict,
                                                           max_ref_fixed_diff=max_ref_fixed_diff, 
@@ -99,10 +97,10 @@ def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_sp
                 print(chrom + "_Tb427v10", ".", "fixedgap", str(start), str(end), ".", ".", ".", 
                       "estimated_length=1000;gap_type=within scaffold;closed_correctly=true", sep="\t")
             else:
-                print(chrom + "_Tb427v10", ".", "notenoughdatagap", str(start), str(end), ".", ".", ".", 
+                print(chrom + "_Tb427v10", ".", "gap", str(start), str(end), ".", ".", ".", 
                       "estimated_length=1000;gap_type=within scaffold;not_enough_data=true", sep="\t")
         else:
-            print(chrom + "_Tb427v10", ".", "notenoughdatagap", str(start), str(end), ".", ".", ".", 
+            print(chrom + "_Tb427v10", ".", "gap", str(start), str(end), ".", ".", ".", 
                   "estimated_length=1000;gap_type=within scaffold;not_enough_data=true", sep="\t")
 
 

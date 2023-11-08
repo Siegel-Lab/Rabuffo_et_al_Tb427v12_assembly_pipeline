@@ -24,27 +24,29 @@ def get_average_distance_deviation(reads_in, mates_in, expected_distances_file):
     stored_reads = {}
     with fileinput.input(reads_in) as in_file2:
         for line in in_file2:
-            qname, flag, rname, pos, _, cigar, *_ = line.strip().split()
+            qname, flag, rname, pos, map_q, cigar, *_ = line.strip().split()
             clipped = get_clipped_bases(cigar)
             pos = int(pos)
+            map_q = int(map_q)
             pos -= clipped
             flag = int(flag)
             rev_stnd = flag & 16
             #print(qname, flag, rname, pos, sep='\t', file=sys.stderr)
             assert not qname in stored_reads
-            stored_reads[qname] = [rname, pos, rev_stnd]
+            stored_reads[qname] = [rname, pos, rev_stnd, map_q]
 
     print("#columns:read_name distance_deviation expected_distance chr rpos1 rpos2 strand")
     with fileinput.input(mates_in) as in_file3:
         for line in in_file3:
-            qname, flag, rname, pos, _, cigar, *_ = line.strip().split()
+            qname, flag, rname, pos, map_q, cigar, *_ = line.strip().split()
             clipped = get_clipped_bases(cigar)
             pos = int(pos)
+            map_q = int(map_q)
             pos -= clipped
             flag = int(flag)
             rev_stnd = flag & 16
             if qname in stored_reads and qname in expected_distances:
-                o_rname, o_rpos, o_rev_stnd = stored_reads[qname]
+                o_rname, o_rpos, o_rev_stnd, o_map_q = stored_reads[qname]
 
                 if o_rname != rname:
                     continue
@@ -55,7 +57,7 @@ def get_average_distance_deviation(reads_in, mates_in, expected_distances_file):
                 if rev_stnd:
                     dist = o_rpos - pos
                 print(qname, dist - expected_distances[qname], expected_distances[qname], rname, pos, o_rpos, 
-                      not rev_stnd, sep='\t')
+                      not rev_stnd, min(map_q, o_map_q), sep='\t')
 
 
 if __name__ == "__main__":
