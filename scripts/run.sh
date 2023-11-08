@@ -45,91 +45,100 @@ setup() {
     mkdir -p ${DATA_DIR}/out
 }
 
+#
+# @todo section:
+#
+# - in the GFF files the first line of the gap annotations is pasted at the end of the last line of the remaining annotations (a newline is missing somewhere)
+# - move all overview pictures to the new genome
+#   - for this transfer annotations
+# - do not filter out misassemblies that overlap existing gaps -> removing more sequence might be a good thing
+#
 
 
 
 main(){
     setup
 
-
-    move_annotation "${DATA_DIR}/out/1_move_centro_anno" \
+    # move the Centromere annotation from the assembly where the cores are merged to the fully phased assembly
+    move_annotation ${DATA_DIR}/out/1_move_centro_anno \
                     "Centromere" \
                     ${GFF_CENTRO_IN} \
                     ${REF_CENTRO} \
                     ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                     ${GFF_IN}
-    # -> "${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff"
+                    # -> "${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff"
 
-
-    annotate_gaps "${DATA_DIR}/out/2_ref_reannotated_gaps" \
+    # reannotate the gaps in the fully phased assembly
+    annotate_gaps ${DATA_DIR}/out/2_ref_reannotated_gaps \
                   ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-                  "${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff"
-    # -> "${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3"
+                  ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
+                  # -> "${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3"
+                  # -> "${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3"
 
-
-    generate_overview_pic "${DATA_DIR}/out/3_overview_of_gaps" \
-                          "${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3" \
+    # create a picture
+    generate_overview_pic ${DATA_DIR}/out/3_overview_of_gaps \
+                          ${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3 \
                           "gene gap Centromere" \
                           "Centromere=blue;gap=purple;gene=lightgrey" \
                             ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
 
-
-    close_gaps "${DATA_DIR}/out/4_closed_gaps" \
+    # 
+    close_gaps ${DATA_DIR}/out/4_closed_gaps \
                ${GENOME_FOLDER_IN} \
                ${GENOME_FILENAME_IN} \
-               ${ONT_READS_IN}
-    # -> "${DATA_DIR}/out/4_closed_gaps/closed_gaps.gff3"
-    # -> "${DATA_DIR}/out/4_closed_gaps/assembly.fasta"
+               ${ONT_READS_IN} \
+               ${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3
+               # -> "${DATA_DIR}/out/4_closed_gaps/gaps.gff3"    nothing but the gaps
+               # -> "${DATA_DIR}/out/4_closed_gaps/closed_gaps.gff3"    gaps and genes
+               # -> "${DATA_DIR}/out/4_closed_gaps/assembly.fasta"
+               # -> ${DATA_DIR}/out/4_closed_gaps/empty.annotation.gff3
 
-    generate_overview_pic "${DATA_DIR}/out/5_overview_of_closed_gaps" \
-                          "${DATA_DIR}/out/4_closed_gaps/closed_gaps.gff3" \
+    generate_overview_pic ${DATA_DIR}/out/5_overview_of_closed_gaps \
+                          ${DATA_DIR}/out/4_closed_gaps/closed_gaps.gff3 \
                           "gene gap Centromere closedgap" \
                           "Centromere=blue;gap=purple;gene=lightgrey;closedgap=green" \
                           ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
 
 
+    # includes vpr generation
+    gap_spanning_reads ${DATA_DIR}/out/6_gap_spanning_reads_old_genome \
+                       ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+                       ${ONT_READS_IN} \
+                       ${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3
+                        # -> ${DATA_DIR}/out/6_gap_spanning_reads_old_genome/distance_deviation.tsv
+                        # -> ${DATA_DIR}/out/6_gap_spanning_reads_old_genome/gap_spanning_reads.tsv
+
+    virtual_paired_read_distance ${DATA_DIR}/out/7_vpr_new_genome \
+                                 ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
+                                 ${ONT_READS_IN}
+                                 # -> ${DATA_DIR}/out/7_vpr_new_genome/distance_deviation.tsv
+
+
+    analyze_gaps_closed_correctly ${DATA_DIR}/out/8_analyze_gaps_closed_correctly \
+                                  ${DATA_DIR}/out/6_gap_spanning_reads_old_genome/distance_deviation.tsv \
+                                  ${DATA_DIR}/out/7_vpr_new_genome/distance_deviation.tsv \
+                                  ${DATA_DIR}/out/6_gap_spanning_reads_old_genome/gap_spanning_reads.tsv \
+                                  ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
+                                  ${DATA_DIR}/out/4_closed_gaps/closed_gaps.gff3
+
+                                  
+    # generate_overview_pic "${DATA_DIR}/out/9_overview_of_correctly_closed_gaps" 
+
+
+    identify_collapsed_regions ${DATA_DIR}/out/10_identify_collapsed_regions \
+        ${DATA_DIR}/out/6_gap_spanning_reads_old_genome/distance_deviation.tsv \
+        ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
+        ${DATA_DIR}/out/4_closed_gaps/empty.annotation.gff3
+        # -> ${DATA_DIR}/out/10_identify_collapsed_regions/annotation.gff
+
+    generate_overview_pic ${DATA_DIR}/out/11_overview_collapsed_repeats \
+                          ${DATA_DIR}/out/10_identify_collapsed_regions/annotation.gff \
+                          "misassembly gap" \
+                          "misassembly=pink;gap=purple" \
+                          "${DATA_DIR}/out/4_closed_gaps/assembly.fasta"
 
 
 
-
-
-
-    # compare_assemblies ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta "reference" ${FIXED_N_ASSEMBLY} "fixed_n"
-
-    # virtual_paired_read_distance ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta "referece"
-
-    # # gap_spanning_reads blub ${VIRT_PAIR_R_DIST}/referece.filtered.reads.sam ${VIRT_PAIR_R_DIST}/referece.filtered.mates.sam ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3
-
-    # # check gap spanning
-
-    # virtual_paired_read_distance ${FIXED_N_ASSEMBLY} "fixed_n"
-
-    # move_annotation "Centromere"
-
-    # generate_overview_pic
-
-
-    # mask_repeats(){
-    #     REFERENCE=$1
-    #     REF_NAME=$2
-
-    #     if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta ];then
-    #         python3 ${SCRIPTS_DIR}/mask_regions.py ${REFERENCE} ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff > ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta
-    #     fi
-
-    #     # count the number of Ns in the input genome
-    #     echo "N's in input assembly (a gap consists of 1,000 Ns):"
-    #     grep -o "N" ${REFERENCE} | wc -l
-
-    #     # count the number of Ns in the output genome
-    #     echo "N's in masked assembly (here, a gap consists of 1,000 Ns):"
-    #     grep -o "N" ${MASK_REPEATS_DIR}/${REF_NAME}.masked.fasta | wc -l
-    # }
-
-    # mask_repeats ${FIXED_N_ASSEMBLY} "fixed_n"
-
-
-    # close_gaps ${MASK_REPEATS_DIR} ${REF_NAME}.masked fixed_repeats
 }
 
 # Output:
@@ -203,6 +212,7 @@ annotate_gaps(){
 # ${OUT_FOLDER}/gaps.gff3
 # ${OUT_FOLDER}/stats.txt
 # ${OUT_FOLDER}/closed_gaps.gff3
+# ${OUT_FOLDER}/empty.annotation.gff3
 #
 close_gaps()
 {
@@ -210,7 +220,7 @@ close_gaps()
     REFERENCE_FOLDER=$2
     REFERENCE_NAME=$3
     READS_IN=$4
-    GFF_IN=$4
+    GFF_IN=$5
 
     mkdir -p ${OUT_FOLDER}
 
@@ -223,9 +233,16 @@ close_gaps()
 
         python3 ${SCRIPTS_DIR}/fixup_number_of_n.py ${OUT_FOLDER}/${REFERENCE_NAME}.fasta.split.joined.fa 100 1000 > ${OUT_FOLDER}/assembly.fasta
 
-        annotate_gaps ${OUT_FOLDER} ${OUT_FOLDER}/assembly.fasta
+        annotate_gaps ${OUT_FOLDER} \
+                      ${OUT_FOLDER}/assembly.fasta \
+                      ${GFF_IN}
+        # -> ${OUT_FOLDER}/gaps.gff3
 
-        python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} gaps.gff3 > ${OUT_FOLDER}/closed_gaps.gff3
+        python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_IN} ${OUT_FOLDER}/gaps.gff3 > ${OUT_FOLDER}/closed_gaps.gff3
+
+        echo "##gff-version 3" > ${OUT_FOLDER}/empty.annotation.gff3
+        faidx ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/empty.annotation.gff3
+
 
         echo "N's before running mascura (here, a gap consists of 1,000 Ns):" > ${OUT_FOLDER}/stats.txt
         grep -o "N" ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta | wc -l >> ${OUT_FOLDER}/stats.txt
@@ -278,16 +295,22 @@ compare_assemblies(){
 #
 gap_spanning_reads(){
     OUT_FOLDER=$1
-    READS_IN=$2
-    MATES_IN=$3
+    GENOME=$2
+    READS_IN=$3
     GAPS_IN=$4
 
     mkdir -p ${OUT_FOLDER}
 
     if [ ! -e ${OUT_FOLDER}/gap_spanning_reads.done ]; then
         echo running gap_spanning_reads in ${OUT_FOLDER}
+        
+        virtual_paired_read_distance ${OUT_FOLDER} \
+                                     ${GENOME} \
+                                     ${READS_IN}
+        # -> ${OUT_FOLDER}/reads.filtered.sam
+        # -> ${OUT_FOLDER}/mates.filtered.sam
 
-        python3 ${SCRIPTS_DIR}/spans_gap.py ${READS_IN} ${MATES_IN} ${GAPS_IN} > ${OUT_FOLDER}/gap_spanning_reads.tsv
+        python3 ${SCRIPTS_DIR}/spans_gap.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${GAPS_IN} > ${OUT_FOLDER}/gap_spanning_reads.tsv
 
         echo "OK" > ${OUT_FOLDER}/gap_spanning_reads.done
     fi
@@ -360,7 +383,7 @@ generate_overview_pic(){
     if [ ! -e ${OUT_FOLDER}/generate_overview_pic.done ]; then
         echo running generate_overview_pic in ${OUT_FOLDER}
 
-        CONTIGS_WITH_GAPS=$(grep "Chr\|BES" ${GFF_IN} | awk '{print $1}' | grep -v "#" | sort | uniq)
+        CONTIGS_WITH_GAPS=$(grep "Chr\|BES" ${GENOME_IN} | awk '{print substr($1,2)}' | grep -v "#" | sort | uniq)
         #echo CONTIGS_WITH_GAPS: ${CONTIGS_WITH_GAPS}
 
         conda deactivate
@@ -377,10 +400,80 @@ generate_overview_pic(){
         conda deactivate
         conda activate ont_assembly
 
+        echo "" > ${OUT_FOLDER}/stats.txt
+        for F in ${FEATURES}; do
+            echo -n "${F} " >> ${OUT_FOLDER}/stats.txt
+            grep ${F} ${GFF_IN} | wc -l >> ${OUT_FOLDER}/stats.txt
+        done
+
         echo "OK" > ${OUT_FOLDER}/generate_overview_pic.done
     fi
 }
 
+# Output:
+# ${OUT_FOLDER}/gaps_closed_correctly.gff
+# ${OUT_FOLDER}/gaps_fixed.gff3
+analyze_gaps_closed_correctly(){
+    OUT_FOLDER=$1
+    DIST_DEV_OLD_GENOME=$2
+    DIST_DEV_NEW_GENOME=$3
+    GAP_SPANNING_READS=$4
+    GAPS_IN=$5
+    GFF_IN=$6
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/analyze_gaps_closed_correctly.done ]; then
+        echo running analyze_gaps_closed_correctly in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/analyze_gaps_closed_correctly.py \
+                ${DIST_DEV_OLD_GENOME} \
+                ${DIST_DEV_NEW_GENOME} \
+                ${GAP_SPANNING_READS} \
+                ${GAPS_IN} \
+            > ${OUT_FOLDER}/gaps_closed_correctly.gff
+
+        grep "gap" ${GFF_IN} > ${OUT_FOLDER}/remaining.gaps.gff
+
+
+        python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py \
+                ${GFF_IN} \
+                ${OUT_FOLDER}/remaining.gaps.gff \
+                ${OUT_FOLDER}/gaps_closed_correctly.gff \
+            > ${OUT_FOLDER}/gaps_fixed.gff3
+
+
+        echo "OK" > ${OUT_FOLDER}/analyze_gaps_closed_correctly.done
+    fi
+}
+
+# Output:
+# ${OUT_FOLDER}/collapsed_regions.gff
+# ${OUT_FOLDER}/annotation.gff
+identify_collapsed_regions(){
+    OUT_FOLDER=$1
+    DIST_DEV_FILE=$2
+    GAPS_IN=$3
+    GFF_IN=$4
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/identify_collapsed_regions.done ]; then
+        echo running identify_collapsed_regions in ${OUT_FOLDER}
+
+
+        python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py \
+                ${DIST_DEV_FILE} \
+                ${GAPS_IN} \
+                ${OUT_FOLDER}/collapsed_regions.gff
+
+
+        cat ${GFF_IN} ${GAPS_IN} ${OUT_FOLDER}/collapsed_regions.gff > ${OUT_FOLDER}/annotation.gff
+
+
+        echo "OK" > ${OUT_FOLDER}/identify_collapsed_regions.done
+    fi
+}
 
 # generate_overview_pic(){
 #     GFF_GAPLESS=${OVERVIEW_DIR}/reference.gapless.gff3
