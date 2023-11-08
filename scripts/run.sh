@@ -79,8 +79,7 @@ main(){
     generate_overview_pic ${DATA_DIR}/out/3_overview_of_gaps \
                           ${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3 \
                           "gene gap Centromere" \
-                          "Centromere=blue;gap=purple;gene=lightgrey" \
-                            ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
+                          "Centromere=blue;gap=purple;gene=lightgrey"
 
     # 
     close_gaps ${DATA_DIR}/out/4_closed_gaps \
@@ -96,8 +95,7 @@ main(){
     generate_overview_pic ${DATA_DIR}/out/5_overview_of_closed_gaps \
                           ${DATA_DIR}/out/4_closed_gaps/closed_gaps.gff3 \
                           "gene gap Centromere closedgap" \
-                          "Centromere=blue;gap=purple;gene=lightgrey;closedgap=green" \
-                          ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
+                          "Centromere=blue;gap=purple;gene=lightgrey;closedgap=green"
 
 
     # includes vpr generation
@@ -134,8 +132,7 @@ main(){
     generate_overview_pic ${DATA_DIR}/out/11_overview_collapsed_repeats \
                           ${DATA_DIR}/out/10_identify_collapsed_regions/annotation.gff \
                           "misassembly gap" \
-                          "misassembly=pink;gap=purple" \
-                          "${DATA_DIR}/out/4_closed_gaps/assembly.fasta"
+                          "misassembly=pink;gap=purple"
 
 
 
@@ -178,7 +175,7 @@ virtual_paired_read_distance(){
         python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${OUT_FOLDER}/expected_distances.tsv > ${OUT_FOLDER}/distance_deviation.tsv
 
         # compute distances
-        python3 ${SCRIPTS_DIR}/get_read_pos_and_strand.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam > ${OUT_FOLDER}/read_pos_and_strnd.tsv
+        python3 ${SCRIPTS_DIR}/get_read_pos_and_strand.py ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/mates.sam > ${OUT_FOLDER}/read_pos_and_strnd.tsv
 
         echo "OK" > ${OUT_FOLDER}/virtual_paired_read_distance.done
     fi
@@ -376,14 +373,13 @@ generate_overview_pic(){
     GFF_IN=$2
     FEATURES=$3
     FEATURE_COLORS=$4
-    GENOME_IN=$5
 
     mkdir -p ${OUT_FOLDER}
 
     if [ ! -e ${OUT_FOLDER}/generate_overview_pic.done ]; then
         echo running generate_overview_pic in ${OUT_FOLDER}
 
-        CONTIGS_WITH_GAPS=$(grep "Chr\|BES" ${GENOME_IN} | awk '{print substr($1,2)}' | grep -v "#" | sort | uniq)
+        CONTIGS_WITH_GAPS=$(grep "Chr\|BES" ${GFF_IN} | awk '{print substr($1,2)}' | grep -v "#" | sort | uniq)
         #echo CONTIGS_WITH_GAPS: ${CONTIGS_WITH_GAPS}
 
         conda deactivate
