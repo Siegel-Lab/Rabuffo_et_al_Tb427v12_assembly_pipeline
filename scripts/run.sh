@@ -79,7 +79,11 @@ main(){
                           "gene" \
                           "gap=purple"
 
-    # includes vpr generation
+    # cut_superfluous_regions ${DATA_DIR}/out/3.1_cut_superfluous_regions \
+    #                         ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+    #                         ${ONT_READS_IN}
+
+    # # includes vpr generation
     gap_spanning_reads ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome \
                        ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                        ${ONT_READS_IN} \
@@ -94,6 +98,11 @@ main(){
                ${ONT_READS_IN}
                # -> ${DATA_DIR}/out/4_closed_gaps/gaps.gff3
                # -> ${DATA_DIR}/out/4_closed_gaps/assembly.fasta
+
+    generate_overview_pic ${DATA_DIR}/out/4.1_overview_of_remaining_gaps \
+                          ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
+                          "gap" \
+                          "gap=purple"
 
     split_genome_in_a_and_b ${DATA_DIR}/out/5_split_genome \
                             ${DATA_DIR}/out/4_closed_gaps/assembly.fasta
@@ -117,9 +126,9 @@ main(){
 
     merge_genomes ${DATA_DIR}/out/8_merged_genomes \
                   ${DATA_DIR}/out/6_closed_gaps_a/assembly.fasta \
-                  ${DATA_DIR}/out/6_closed_gaps_a/gaps.fasta \
+                  ${DATA_DIR}/out/6_closed_gaps_a/gaps.gff3 \
                   ${DATA_DIR}/out/7_closed_gaps_b/assembly.fasta \
-                  ${DATA_DIR}/out/7_closed_gaps_b/gaps.fasta \
+                  ${DATA_DIR}/out/7_closed_gaps_b/gaps.gff3 \
                  # -> ${DATA_DIR}/out/8_merged_genomes/assembly.fasta
                  # -> ${DATA_DIR}/out/8_merged_genomes/annotation.gff
 
@@ -132,6 +141,7 @@ main(){
                                  ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
                                  ${ONT_READS_IN}
                                  # -> ${DATA_DIR}/out/10_vpr_new_genome/distance_deviation.tsv
+    exit
 
 
     analyze_gaps_closed_correctly ${DATA_DIR}/out/11_analyze_gaps_closed_correctly \
@@ -184,23 +194,27 @@ virtual_paired_read_distance(){
 
     mkdir -p ${OUT_FOLDER}
 
+    VPR_LEN=500
+    VPR_TRIALS=3
+    MIN_ONT_LEN=$( expr "${VPR_LEN}" "*" "(" "${VPR_TRIALS}" "*" "2" "+" "2" ")" )
+
     if [ ! -e ${OUT_FOLDER}/virtual_paired_read_distance.done ]; then
         echo running virtual_paired_read_distance in ${OUT_FOLDER}
 
-        zcat ${READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${OUT_FOLDER}/reads.fasta ${OUT_FOLDER}/mates.fasta ${OUT_FOLDER}/expected_distances.tsv 2000 500
+        # zcat ${READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${OUT_FOLDER}/reads.fasta ${OUT_FOLDER}/mates.fasta ${OUT_FOLDER}/expected_distances.tsv ${MIN_ONT_LEN} ${VPR_LEN} ${VPR_TRIALS}
 
-        minimap2 -ax map-ont ${GENOME} ${OUT_FOLDER}/reads.fasta > ${OUT_FOLDER}/reads.sam 2> ${OUT_FOLDER}/reads.minimap.errlog
-        minimap2 -ax map-ont ${GENOME} ${OUT_FOLDER}/mates.fasta > ${OUT_FOLDER}/mates.sam 2> ${OUT_FOLDER}/mates.minimap.errlog
+        # minimap2 -t 8 -ax map-ont ${GENOME} ${OUT_FOLDER}/reads.fasta > ${OUT_FOLDER}/reads.sam 2> ${OUT_FOLDER}/reads.minimap.errlog
+        # minimap2 -t 8 -ax map-ont ${GENOME} ${OUT_FOLDER}/mates.fasta > ${OUT_FOLDER}/mates.sam 2> ${OUT_FOLDER}/mates.minimap.errlog
 
-        # filter out low mapping quality reads
-        samtools view -S -F 2304 ${OUT_FOLDER}/reads.sam > ${OUT_FOLDER}/reads.filtered.sam 
-        samtools view -S -F 2304 ${OUT_FOLDER}/mates.sam > ${OUT_FOLDER}/mates.filtered.sam 
-
-        # compute distances
-        python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${OUT_FOLDER}/expected_distances.tsv > ${OUT_FOLDER}/distance_deviation.tsv
+        # # filter out low mapping quality reads
+        # samtools view -S -F 2304 ${OUT_FOLDER}/reads.sam > ${OUT_FOLDER}/reads.filtered.sam 
+        # samtools view -S -F 2304 ${OUT_FOLDER}/mates.sam > ${OUT_FOLDER}/mates.filtered.sam 
 
         # compute distances
-        python3 ${SCRIPTS_DIR}/get_read_pos_and_strand.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam > ${OUT_FOLDER}/read_pos_and_strnd.tsv
+        python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${OUT_FOLDER}/expected_distances.tsv ${VPR_LEN} > ${OUT_FOLDER}/distance_deviation.tsv
+
+        # compute distances
+        python3 ${SCRIPTS_DIR}/get_read_pos_and_strand.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${VPR_LEN} > ${OUT_FOLDER}/read_pos_and_strnd.tsv
 
         echo "OK" > ${OUT_FOLDER}/virtual_paired_read_distance.done
     fi
@@ -243,6 +257,7 @@ close_gaps()
     READS_IN=$4
 
     mkdir -p ${OUT_FOLDER}
+
 
     if [ ! -e ${OUT_FOLDER}/close_gaps.done ]; then
         echo running close_gaps in ${OUT_FOLDER}
@@ -396,7 +411,7 @@ generate_overview_pic(){
     if [ ! -e ${OUT_FOLDER}/generate_overview_pic.done ]; then
         echo running generate_overview_pic in ${OUT_FOLDER}
 
-        CONTIGS_WITH_GAPS=$(grep "Chr\|BES" ${GFF_IN} | awk '{print substr($1,2)}' | grep -v "#" | sort | uniq)
+        CONTIGS_WITH_GAPS=$(grep "#" ${GFF_IN} | grep "Chr\|BES" | awk '{print $2}' | sort | uniq)
         #echo CONTIGS_WITH_GAPS: ${CONTIGS_WITH_GAPS}
 
         conda deactivate
@@ -541,78 +556,26 @@ merge_genomes(){
 
 }
 
-# generate_overview_pic(){
-#     GFF_GAPLESS=${OVERVIEW_DIR}/reference.gapless.gff3
-#     GFF_FIXED_GAP=${OVERVIEW_DIR}/reference.gap_annotation_fixed.gff3
+cut_superfluous_regions(){
+    OUT_FOLDER=$1
+    GENOME_IN=$2
+    ONT_IN=$3
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/cut_superfluous_regions.done ]; then
+        echo running cut_superfluous_regions in ${OUT_FOLDER}
+
+        minimap2 -t 8 -ax map-ont ${GENOME} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools view -Shu - \
+            | samtools sort - > ${OUT_FOLDER}/reads.bam
+
+        samtools index ${OUT_FOLDER}/reads.bam
 
 
-#     if [ ! -e ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff ];then
-#         python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py ${VIRT_PAIR_R_DIST}/${NAME}.distance_deviation ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff
-#     fi
+        echo "OK" > ${OUT_FOLDER}/cut_superfluous_regions.done
+    fi
+}
 
-#     if [ ! -e ${OVERVIEW_DIR}/open_gaps.gff ]; then
-#         grep -v "gap" ${GFF_IN} > ${GFF_GAPLESS}
-#         cat ${GFF_GAPLESS} ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff > ${OVERVIEW_DIR}/open_gaps.gff
-#     fi
-
-#     if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 ]; then
-#         grep -v "gap" ${GFF_IN} > ${GFF_GAPLESS}
-#         cat ${GFF_GAPLESS} ${DATA_DIR}/out/samba_out_1/reference.gaps.gff3 ${MOVE_ANNO_DIR}/Centromere.transfered.curated.gff ${MASK_REPEATS_DIR}/${REF_NAME}.mis_assemblies.gff > ${GFF_FIXED_GAP}
-
-#         python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 > ${OVERVIEW_DIR}/annotation.gaps_closed.gff3
-#     fi
-    
-#     CONTIGS_WITH_GAPS=$(grep "gap" ${GFF_FIXED_GAP} | awk '{print $1} END { print "Chr2_B_Tb427v10" }' | sort | uniq)
-
-#     if [ ! -e ${OVERVIEW_DIR}/genome_overview_gaps.svg ]; then
-#         conda deactivate
-#         conda activate GENEastics_env
-#         python3 ${BIN_DIR}/geneastics.py \
-#             --replicons ${CONTIGS_WITH_GAPS} \
-#             --gff_file ${OVERVIEW_DIR}/open_gaps.gff \
-#             --feature_types "gene" "misassembly" "gap" "Centromere" \
-#             --alpha 0.99 \
-#             --feature_color_mapping "Centromere=blue;gap=purple;gene=lightgrey;misassembly=pink" \
-#             --x_tick_distance 500000 \
-#             --font_size 1 \
-#             --output_file ${OVERVIEW_DIR}/genome_overview_gaps.svg
-#         conda deactivate
-#     fi
-#     if [ ! -e ${OVERVIEW_DIR}/genome_overview_closed.svg ]; then
-#         conda deactivate
-#         conda activate GENEastics_env
-#         python3 ${BIN_DIR}/geneastics.py \
-#             --replicons ${CONTIGS_WITH_GAPS} \
-#             --gff_file ${OVERVIEW_DIR}/annotation.gaps_closed.gff3 \
-#             --feature_types "gene" "Centromere" "gap" "closedgap" \
-#             --alpha 0.99 \
-#             --feature_color_mapping "Centromere=blue;gap=purple;gene=lightgrey;closedgap=green" \
-#             --x_tick_distance 500000 \
-#             --font_size 1 \
-#             --output_file ${OVERVIEW_DIR}/genome_overview_closed.svg
-#         conda deactivate
-#     fi
-#     if [ ! -e ${OVERVIEW_DIR}/genome_overview_fixed.svg ]; then
-#         if [ -e ${ANA_LYSIS_IN}/closed_gaps_analysis.gff ]; then
-#             if [ ! -e ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 ]; then
-#                 python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py ${GFF_FIXED_GAP} ${FIXED_N_ASSEMBLY}.gaps.gff3 ${ANA_LYSIS_IN}/closed_gaps_analysis.gff > ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3
-#             fi
-#             conda deactivate
-#             conda activate GENEastics_env
-#             python3 ${BIN_DIR}/geneastics.py \
-#                 --replicons ${CONTIGS_WITH_GAPS} \
-#                 --gff_file ${OVERVIEW_DIR}/annotation.gaps_fixed.gff3 \
-#                 --feature_types "gene" "Centromere" "gap" "closedgap" "fixedgap" "notenoughdatagap" \
-#                 --alpha 0.99 \
-#                 --feature_color_mapping "Centromere=blue;gap=purple;gene=lightgrey;closedgap=red;notenoughdatagap=orange;fixedgap=green" \
-#                 --x_tick_distance 500000 \
-#                 --font_size 1 \
-#                 --output_file ${OVERVIEW_DIR}/genome_overview_fixed.svg
-#             conda deactivate
-#         fi
-#     fi
-#     conda activate ont_assembly
-# }
 
 
 main

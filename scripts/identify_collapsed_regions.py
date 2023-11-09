@@ -9,11 +9,11 @@ def load_dist_dev(file_name, max_dist=None):
                 continue
             else:
                 # read_name distance_deviation expected_distance chr rpos1 rpos2 strand
-                readname, distance, expected, chr, pos1, pos2, strnd = line.strip().split()
+                readname, distance, expected, chr, pos1, pos2, strnd, map_q = line.strip().split()
                 if max_dist is None or int(distance) < max_dist:
                     names.append(readname)
                     chr = chr[:-len("_Tb427v10")]
-                    ret.append([int(distance), int(expected), chr, int(pos1), int(pos2), strnd])
+                    ret.append([int(distance), int(expected), chr, int(pos1), int(pos2), strnd, int(map_q)])
     return names, ret
 
 
@@ -35,7 +35,7 @@ def load_gaps(file_name):
 
 def post_process(ref_names, ref_dev, min_dev = -100):
     data = []
-    for r_name, (distance, expected, chr, pos1, pos2, strnd) in zip(ref_names, ref_dev):
+    for r_name, (distance, expected, chr, pos1, pos2, strnd, mapq_q) in zip(ref_names, ref_dev):
         if distance < -100:
             data.append([chr, min(pos1, pos2), max(pos1, pos2), distance, r_name])
 
