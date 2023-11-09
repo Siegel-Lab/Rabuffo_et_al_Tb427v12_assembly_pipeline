@@ -33,10 +33,10 @@ def load_gaps(file_name):
 
 
 
-def post_process(ref_names, ref_dev, min_dev = -100):
+def post_process(ref_names, ref_dev, min_dev = -100, min_map_q=30):
     data = []
-    for r_name, (distance, expected, chr, pos1, pos2, strnd, mapq_q) in zip(ref_names, ref_dev):
-        if distance < -100:
+    for r_name, (distance, expected, chr, pos1, pos2, strnd, map_q) in zip(ref_names, ref_dev):
+        if distance < min_dev and map_q >= min_map_q:
             data.append([chr, min(pos1, pos2), max(pos1, pos2), distance, r_name])
 
     return data
@@ -50,27 +50,31 @@ def cluster(data, distance_y=500, min_reads=5, max_cluster_size=50000):
     data.sort(key=lambda x: (x[0], x[1], x[3]))
     clusters = []
     for chr, start, end, deviation, r_name in data:
-        fits_in_cluster = False
-        for cluster in clusters:
+        fitting_clusters = []
+        for idx, cluster in enumerate(clusters):
+            fits_in_cluster = False
             for cluster_chr, cluster_start, cluster_end, cluster_deviation, _ in cluster:
                 if cluster_chr == chr and end >= cluster_start and start <= cluster_end and abs(deviation - cluster_deviation) <= distance_y:
-                    fits_in_cluster = True
+                    fitting_clusters.append(idx)
                     break
-            if fits_in_cluster:
-                cluster.append([chr, start, end, deviation, r_name])
-                break
-        if not fits_in_cluster:
-            clusters.append([])
-        clusters[-1].append([chr, start, end, deviation, r_name])
+        if len(fitting_clusters) == 0:
+            clusters.append([[chr, start, end, deviation, r_name]])
+        else:
+            clusters[fitting_clusters[0]].append([chr, start, end, deviation, r_name])
+            for idx in fitting_clusters[1:]:
+                clusters[fitting_clusters[0]] += clusters[idx]
+                clusters[idx] = []
 
     processed_clusters = []
     for cluster in clusters:
         if len(cluster) > min_reads and not "unitig" in cluster[0][0]:
-            cluster_start = percentile([x[1] for x in cluster], 0.05)
-            cluster_end = percentile([x[1] for x in cluster], 0.95)
+            cluster_start = percentile([x[1] for x in cluster], 0.95)
+            cluster_end = percentile([x[2] for x in cluster], 0.05)
             if abs(cluster_start - cluster_end) > max_cluster_size: # filter out extremely large clusters
                 continue
-            assert cluster_start < cluster_end
+            if cluster_start > cluster_end:
+                continue
+            #assert cluster_start < cluster_end
             cluster_deviation = sum([x[3] for x in cluster]) / len(cluster)
             #print("cluster from", cluster_start, "to", cluster_end, "with deviation", cluster_deviation, "and", 
             #    len(cluster), "reads")
@@ -78,7 +82,19 @@ def cluster(data, distance_y=500, min_reads=5, max_cluster_size=50000):
 
     return processed_clusters
 
+def filter_clusters_with_counter_indication(clusters, data, min_indication=5):
+    ret = []
+    for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in clusters:
+        counter_indication = 0
+        for chr, start, end, deviation, r_name in data:
+            if chr == cluster_chr and deviation >= 0 and deviation <= 200:
+                if start <= cluster_start and end >= cluster_end:
+                    counter_indication += 1
+        if counter_indication < min_indication:
+            ret.append([cluster_chr, cluster_start, cluster_end, cluster_deviation, c])
 
+
+    return ret
 
 def filter_clusters_that_overlap_gap(clusters, gap_pos, min_distance_to_gap=10000):
     # filter out clusters that overlap with gaps
@@ -130,6 +146,7 @@ if __name__ == "__main__":
     data = post_process(ref_names, ref_dev)
 
     clusters = cluster(data)
+    clusters = filter_clusters_with_counter_indication(clusters, data)
     new_cluster, cluster_overlapping_gap = filter_clusters_that_overlap_gap(clusters, gap_pos)
     new_cluster = merge_overlapping_clusters(new_cluster)
 

@@ -79,9 +79,9 @@ main(){
                           "gene" \
                           "gap=purple"
 
-    # cut_superfluous_regions ${DATA_DIR}/out/3.1_cut_superfluous_regions \
-    #                         ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-    #                         ${ONT_READS_IN}
+    cut_superfluous_regions ${DATA_DIR}/out/3.1_cut_superfluous_regions \
+                            ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+                            ${ONT_READS_IN}
 
     # # includes vpr generation
     gap_spanning_reads ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome \
@@ -141,7 +141,6 @@ main(){
                                  ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
                                  ${ONT_READS_IN}
                                  # -> ${DATA_DIR}/out/10_vpr_new_genome/distance_deviation.tsv
-    exit
 
 
     analyze_gaps_closed_correctly ${DATA_DIR}/out/11_analyze_gaps_closed_correctly \
@@ -201,14 +200,14 @@ virtual_paired_read_distance(){
     if [ ! -e ${OUT_FOLDER}/virtual_paired_read_distance.done ]; then
         echo running virtual_paired_read_distance in ${OUT_FOLDER}
 
-        # zcat ${READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${OUT_FOLDER}/reads.fasta ${OUT_FOLDER}/mates.fasta ${OUT_FOLDER}/expected_distances.tsv ${MIN_ONT_LEN} ${VPR_LEN} ${VPR_TRIALS}
+        zcat ${READS_IN} | python3 ${SCRIPTS_DIR}/illumina_from_ont.py - ${OUT_FOLDER}/reads.fasta ${OUT_FOLDER}/mates.fasta ${OUT_FOLDER}/expected_distances.tsv ${MIN_ONT_LEN} ${VPR_LEN} ${VPR_TRIALS}
 
-        # minimap2 -t 8 -ax map-ont ${GENOME} ${OUT_FOLDER}/reads.fasta > ${OUT_FOLDER}/reads.sam 2> ${OUT_FOLDER}/reads.minimap.errlog
-        # minimap2 -t 8 -ax map-ont ${GENOME} ${OUT_FOLDER}/mates.fasta > ${OUT_FOLDER}/mates.sam 2> ${OUT_FOLDER}/mates.minimap.errlog
+        minimap2 -t 8 -ax map-ont ${GENOME} ${OUT_FOLDER}/reads.fasta > ${OUT_FOLDER}/reads.sam 2> ${OUT_FOLDER}/reads.minimap.errlog
+        minimap2 -t 8 -ax map-ont ${GENOME} ${OUT_FOLDER}/mates.fasta > ${OUT_FOLDER}/mates.sam 2> ${OUT_FOLDER}/mates.minimap.errlog
 
         # # filter out low mapping quality reads
-        # samtools view -S -F 2304 ${OUT_FOLDER}/reads.sam > ${OUT_FOLDER}/reads.filtered.sam 
-        # samtools view -S -F 2304 ${OUT_FOLDER}/mates.sam > ${OUT_FOLDER}/mates.filtered.sam 
+        samtools view -S -F 2304 ${OUT_FOLDER}/reads.sam > ${OUT_FOLDER}/reads.filtered.sam 
+        samtools view -S -F 2304 ${OUT_FOLDER}/mates.sam > ${OUT_FOLDER}/mates.filtered.sam 
 
         # compute distances
         python3 ${SCRIPTS_DIR}/get_average_distance_deviation.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${OUT_FOLDER}/expected_distances.tsv ${VPR_LEN} > ${OUT_FOLDER}/distance_deviation.tsv
