@@ -99,29 +99,45 @@ main(){
                # -> ${DATA_DIR}/out/4_closed_gaps/gaps.gff3
                # -> ${DATA_DIR}/out/4_closed_gaps/assembly.fasta
 
-    generate_overview_pic ${DATA_DIR}/out/4.1_overview_of_remaining_gaps \
-                          ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
+    transfer_annotation ${DATA_DIR}/out/4.1_transfer_annotation \
+                        ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
+                        ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
+                        # -> ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff
+
+    generate_overview_pic ${DATA_DIR}/out/4.2_overview_of_remaining_gaps \
+                          ${DATA_DIR}/out/4.2_transfer_annotation/annotation.transfered.gff \
                           "gap" \
                           "gap=purple"
 
     split_genome_in_a_and_b ${DATA_DIR}/out/5_split_genome \
-                            ${DATA_DIR}/out/4_closed_gaps/assembly.fasta
+                            ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
+                            ${ONT_READS_IN}
                             # -> ${DATA_DIR}/out/5_split_genome/A.fasta
                             # -> ${DATA_DIR}/out/5_split_genome/B.fasta
+                            # -> ${DATA_DIR}/out/5_split_genome/reads.A.fasta
+                            # -> ${DATA_DIR}/out/5_split_genome/reads.B.fasta
 
     close_gaps ${DATA_DIR}/out/6_closed_gaps_a \
                ${DATA_DIR}/out/5_split_genome \
                A \
-               ${ONT_READS_IN}
+               ${DATA_DIR}/out/5_split_genome/reads.A.fasta
                # -> ${DATA_DIR}/out/6_closed_gaps_a/gaps.gff3
                # -> ${DATA_DIR}/out/6_closed_gaps_a/assembly.fasta
 
     close_gaps ${DATA_DIR}/out/7_closed_gaps_b \
                ${DATA_DIR}/out/5_split_genome \
                B \
-               ${ONT_READS_IN}
+               ${DATA_DIR}/out/5_split_genome/reads.B.fasta
                # -> ${DATA_DIR}/out/7_closed_gaps_b/gaps.gff3
                # -> ${DATA_DIR}/out/7_closed_gaps_b/assembly.fasta
+
+    # # includes vpr generation
+    gap_spanning_reads ${DATA_DIR}/out/7.1_gap_spanning_reads_on_b \
+                       ${DATA_DIR}/out/7_closed_gaps_b/assembly.fasta \
+                       ${ONT_READS_IN} \
+                       ${DATA_DIR}/out/7_closed_gaps_b/gaps.gff3
+                        # -> ${DATA_DIR}/out/7.1_gap_spanning_reads_old_genome/distance_deviation.tsv
+                        # -> ${DATA_DIR}/out/7.1_gap_spanning_reads_old_genome/gap_spanning_reads.tsv
 
 
     merge_genomes ${DATA_DIR}/out/8_merged_genomes \
@@ -132,8 +148,14 @@ main(){
                  # -> ${DATA_DIR}/out/8_merged_genomes/assembly.fasta
                  # -> ${DATA_DIR}/out/8_merged_genomes/annotation.gff
 
+
+    transfer_annotation ${DATA_DIR}/out/8.1_transfer_annotation \
+                        ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
+                        ${DATA_DIR}/out/8_merged_genomes/assembly.fasta
+                        # -> ${DATA_DIR}/out/8.1_transfer_annotation/annotation.transfered.gff
+
     generate_overview_pic ${DATA_DIR}/out/9_overview_of_remaining_gaps \
-                          ${DATA_DIR}/out/8_merged_genomes/annotation.gff \
+                          ${DATA_DIR}/out/8.1_transfer_annotation/annotation.transfered.gff \
                           "gap" \
                           "gap=purple"
 
@@ -158,7 +180,7 @@ main(){
 
 
     identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
-        ${DATA_DIR}/out/6_gap_spanning_reads_old_genome/distance_deviation.tsv \
+        ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome/distance_deviation.tsv \
         ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
         ${DATA_DIR}/out/4_closed_gaps/empty.annotation.gff3
         # -> ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff
@@ -233,7 +255,6 @@ annotate_gaps(){
 
         python3 ${SCRIPTS_DIR}/annotate_gaps.py ${GENOME_IN} > ${OUT_FOLDER}/gaps.only.gff3
 
-        
         echo "##gff-version 3" > ${OUT_FOLDER}/empty.annotation.gff3
         faidx ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/empty.annotation.gff3
         cat ${OUT_FOLDER}/empty.annotation.gff3 ${OUT_FOLDER}/gaps.only.gff3 > ${OUT_FOLDER}/gaps.gff3
@@ -393,8 +414,34 @@ move_annotation(){
         echo "OK" > ${OUT_FOLDER}/move_annotation.done
     fi
 
+}
 
 
+# Output:
+# ${OUT_FOLDER}/annotation.transfered.gff
+transfer_annotation(){
+    OUT_FOLDER=$1
+    GFF_IN=$3
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/transfer_annotation.done ]; then
+        echo running transfer_annotation in ${OUT_FOLDER}
+
+        conda deactivate
+        conda activate ont_assembly_2
+
+        module load ngs/bedtools2/2.26.0
+        module load ncbi-blast/2.7.1+
+
+        ## Run a modified version of Konrad's Förstner script to transfer annotation
+        python3 ${BIN_DIR}/map_annotation_via_string_match.py ${ASSEMBLY_TRANSFER} ${GFF_IN} ${OUT_FOLDER} ${OUT_FOLDER}/annotation.transfered.gff
+
+        conda deactivate
+        conda activate ont_assembly
+
+        echo "OK" > ${OUT_FOLDER}/transfer_annotation.done
+    fi
 }
 
 # Output
@@ -507,20 +554,30 @@ identify_collapsed_regions(){
 # Output:
 # ${OUT_FOLDER}/A.fasta
 # ${OUT_FOLDER}/B.fasta
+# ${OUT_FOLDER}/reads.A.fasta
+# ${OUT_FOLDER}/reads.B.fasta
 split_genome_in_a_and_b(){
     OUT_FOLDER=$1
     GENOME_IN=$2
+    READS_IN=$3
 
     mkdir -p ${OUT_FOLDER}
 
     if [ ! -e ${OUT_FOLDER}/split_genome_in_a_and_b.done ]; then
         echo running split_genome_in_a_and_b in ${OUT_FOLDER}
 
+        # split genomes
         grep ">" ${GENOME_IN} | grep -v "B_Tb427v10" | awk '{print substr($1,2)}' > ${OUT_FOLDER}/A.lst
         grep ">" ${GENOME_IN} | grep "B_Tb427v10" | awk '{print substr($1,2)}' > ${OUT_FOLDER}/B.lst
 
         ${BIN_DIR}/seqtk/seqtk subseq ${GENOME_IN} ${OUT_FOLDER}/A.lst > ${OUT_FOLDER}/A.fasta
         ${BIN_DIR}/seqtk/seqtk subseq ${GENOME_IN} ${OUT_FOLDER}/B.lst > ${OUT_FOLDER}/B.fasta
+
+        # split reads
+        minimap2 -t 8 -ax map-ont ${GENOME} ${READS_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools view -q 30 -S -F 2304 > ${OUT_FOLDER}/reads.sam
+
+        zcat ${READS_IN} | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/A.lst > ${OUT_FOLDER}/reads.B.fasta
+        zcat ${READS_IN} | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/B.lst > ${OUT_FOLDER}/reads.A.fasta
 
         echo "OK" > ${OUT_FOLDER}/split_genome_in_a_and_b.done
     fi
@@ -565,8 +622,7 @@ cut_superfluous_regions(){
     if [ ! -e ${OUT_FOLDER}/cut_superfluous_regions.done ]; then
         echo running cut_superfluous_regions in ${OUT_FOLDER}
 
-        minimap2 -t 8 -ax map-ont ${GENOME} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools view -Shu - \
-            | samtools sort - > ${OUT_FOLDER}/reads.bam
+        minimap2 -t 8 -ax map-ont ${GENOME_IN} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools sort -o ${OUT_FOLDER}/reads.bam
 
         samtools index ${OUT_FOLDER}/reads.bam
 
