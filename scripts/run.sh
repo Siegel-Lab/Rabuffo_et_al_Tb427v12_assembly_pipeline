@@ -6,16 +6,6 @@
 #SBATCH --job-name=ont_try_assembly
 #SBATCH -o slurm_out/ont_assembly-%j.out
 
-## STEP 1: configure
-
-#
-# META:
-# Every function represents one stage of the processing.
-# The various output files of every function are stored under a common folder (should be a folder in data/out/).
-# The inputs of a function are coolectedd from the previous outputs
-#
-
-
 
 setup() {
     source /home/mschmidt/.miniconda3/etc/profile.d/conda.sh
@@ -31,7 +21,7 @@ setup() {
 
     GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
     GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
-    GFF_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
+    GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
     ANA_LYSIS_IN=$(realpath ../data/in/analysis_in)
     REF_CENTRO=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
     GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
@@ -65,7 +55,7 @@ main(){
                     ${GFF_CENTRO_IN} \
                     ${REF_CENTRO} \
                     ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-                    ${GFF_IN}
+                    ${GFF_IN_XXX}
                     # -> "${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff"
 
     # reannotate the gaps in the fully phased assembly
@@ -79,35 +69,59 @@ main(){
                           "gene" \
                           "gap=purple"
 
-    cut_superfluous_regions ${DATA_DIR}/out/3.1_cut_superfluous_regions \
-                            ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-                            ${ONT_READS_IN}
-
     # # includes vpr generation
-    gap_spanning_reads ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome \
+    gap_spanning_reads ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome \
                        ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                        ${ONT_READS_IN} \
                        ${DATA_DIR}/out/2_ref_reannotated_gaps/reannotated.gff3
-                        # -> ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome/distance_deviation.tsv
-                        # -> ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome/gap_spanning_reads.tsv
+                        # -> ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv
+                        # -> ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/gap_spanning_reads.tsv
 
+    cut_superfluous_regions ${DATA_DIR}/out/3.2_cut_superfluous_regions \
+                            ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+                            ${ONT_READS_IN} \
+                            ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
+                            ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
+                            ${GFF_IN_XXX}
+
+
+    generate_overview_pic ${DATA_DIR}/out/3.3_overview_of_superfluous_regions \
+                          ${DATA_DIR}/out/3.2_cut_superfluous_regions/all_annotation.gff \
+                          "superfluous gap" \
+                          "gap=purple;superfluous=pink"
+
+    mask_region ${DATA_DIR}/out/3.4_masked_superfluous_regions \
+                ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+                ${DATA_DIR}/out/3.2_cut_superfluous_regions/filtered_superfluous_regions.gff
+                # -> ${DATA_DIR}/out/3.4_masked_superfluous_regions/masked.fasta
+
+    annotate_gaps ${DATA_DIR}/out/3.5_annotate_new_gaps \
+                  ${DATA_DIR}/out/3.4_masked_superfluous_regions/masked.fasta
+                  # -> "${DATA_DIR}/out/3.5_annotate_new_gaps/gaps.gff3"
+
+    generate_overview_pic ${DATA_DIR}/out/3.6_overview_of_gaps_and_masked \
+                          "${DATA_DIR}/out/3.5_annotate_new_gaps/gaps.gff3" \
+                          "gap" \
+                          "gap=purple"
     # 
     close_gaps ${DATA_DIR}/out/4_closed_gaps \
-               ${GENOME_FOLDER_IN} \
-               ${GENOME_FILENAME_IN} \
+               ${DATA_DIR}/out/3.4_masked_superfluous_regions \
+               masked \
                ${ONT_READS_IN}
                # -> ${DATA_DIR}/out/4_closed_gaps/gaps.gff3
                # -> ${DATA_DIR}/out/4_closed_gaps/assembly.fasta
 
-    transfer_annotation ${DATA_DIR}/out/4.1_transfer_annotation \
-                        ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
-                        ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
-                        # -> ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff
+    # transfer_annotation ${DATA_DIR}/out/4.1_transfer_annotation \
+    #                     ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
+    #                     ${GFF_IN_XXX} \
+    #                     ${REF_CENTRO}
+    #                     # -> ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff
 
     generate_overview_pic ${DATA_DIR}/out/4.2_overview_of_remaining_gaps \
-                          ${DATA_DIR}/out/4.2_transfer_annotation/annotation.transfered.gff \
+                          ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
                           "gap" \
                           "gap=purple"
+                        #   ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff \
 
     split_genome_in_a_and_b ${DATA_DIR}/out/5_split_genome \
                             ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
@@ -150,8 +164,9 @@ main(){
 
 
     transfer_annotation ${DATA_DIR}/out/8.1_transfer_annotation \
-                        ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
-                        ${DATA_DIR}/out/8_merged_genomes/assembly.fasta
+                        ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
+                        ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff \
+                        ${REF_CENTRO}
                         # -> ${DATA_DIR}/out/8.1_transfer_annotation/annotation.transfered.gff
 
     generate_overview_pic ${DATA_DIR}/out/9_overview_of_remaining_gaps \
@@ -166,9 +181,9 @@ main(){
 
 
     analyze_gaps_closed_correctly ${DATA_DIR}/out/11_analyze_gaps_closed_correctly \
-                                  ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome/distance_deviation.tsv \
+                                  ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
                                   ${DATA_DIR}/out/10_vpr_new_genome/distance_deviation.tsv \
-                                  ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome/gap_spanning_reads.tsv \
+                                  ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/gap_spanning_reads.tsv \
                                   ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
                                   ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
                                   # -> ${DATA_DIR}/out/11_analyze_gaps_closed_correctly/gaps_fixed.gff3
@@ -180,7 +195,7 @@ main(){
 
 
     identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
-        ${DATA_DIR}/out/3.2_gap_spanning_reads_old_genome/distance_deviation.tsv \
+        ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
         ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
         ${DATA_DIR}/out/4_closed_gaps/empty.annotation.gff3
         # -> ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff
@@ -256,7 +271,7 @@ annotate_gaps(){
         python3 ${SCRIPTS_DIR}/annotate_gaps.py ${GENOME_IN} > ${OUT_FOLDER}/gaps.only.gff3
 
         echo "##gff-version 3" > ${OUT_FOLDER}/empty.annotation.gff3
-        faidx ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/empty.annotation.gff3
+        faidx ${GENOME_IN} -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/empty.annotation.gff3
         cat ${OUT_FOLDER}/empty.annotation.gff3 ${OUT_FOLDER}/gaps.only.gff3 > ${OUT_FOLDER}/gaps.gff3
 
         echo "OK" > ${OUT_FOLDER}/annotate_gaps.done
@@ -267,7 +282,6 @@ annotate_gaps(){
 # ${OUT_FOLDER}/assembly.fasta
 # ${OUT_FOLDER}/gaps.gff3
 # ${OUT_FOLDER}/stats.txt
-# ${OUT_FOLDER}/closed_gaps.gff3
 #
 close_gaps()
 {
@@ -291,6 +305,11 @@ close_gaps()
         annotate_gaps ${OUT_FOLDER} \
                       ${OUT_FOLDER}/assembly.fasta
         # -> ${OUT_FOLDER}/gaps.gff3
+
+        python3 ${SCRIPTS_DIR}/annotate_closed_gaps.py \
+                ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta \
+                ${OUT_FOLDER}/assembly.fasta \
+            >> ${OUT_FOLDER}/gaps.gff3
 
 
         echo "N's before running mascura (here, a gap consists of 1,000 Ns):" > ${OUT_FOLDER}/stats.txt
@@ -421,7 +440,9 @@ move_annotation(){
 # ${OUT_FOLDER}/annotation.transfered.gff
 transfer_annotation(){
     OUT_FOLDER=$1
+    ASSEMBLY_TRANSFER=$2
     GFF_IN=$3
+    ASSEMBLY_IN=$4
 
     mkdir -p ${OUT_FOLDER}
 
@@ -433,9 +454,21 @@ transfer_annotation(){
 
         module load ngs/bedtools2/2.26.0
         module load ncbi-blast/2.7.1+
+        
+        python3 ${BIN_DIR}/seq_length.py ${ASSEMBLY_IN} > ${OUT_FOLDER}/genome.sizes
+
+        # Crop coordinates based on chromosome length
+
+        bedtools slop -i ${GFF_IN} -g ${OUT_FOLDER}/genome.sizes -b 0 > ${OUT_FOLDER}/cropped.gff
+
+        ## Get fasta sequences for each entry and add it to the annotation file
+
+        bedtools getfasta -tab -fi ${ASSEMBLY_IN} -bed ${OUT_FOLDER}/cropped.gff > ${OUT_FOLDER}/sequences.fasta
+
+        paste ${OUT_FOLDER}/cropped.gff ${OUT_FOLDER}/sequences.fasta > ${OUT_FOLDER}/sequence_annotation.out
 
         ## Run a modified version of Konrad's Förstner script to transfer annotation
-        python3 ${BIN_DIR}/map_annotation_via_string_match.py ${ASSEMBLY_TRANSFER} ${GFF_IN} ${OUT_FOLDER} ${OUT_FOLDER}/annotation.transfered.gff
+        python3 ${BIN_DIR}/map_annotation_via_string_match.py ${ASSEMBLY_TRANSFER} ${OUT_FOLDER}/sequence_annotation.out ${OUT_FOLDER} ${OUT_FOLDER}/annotation.transfered.gff
 
         conda deactivate
         conda activate ont_assembly
@@ -457,8 +490,8 @@ generate_overview_pic(){
     if [ ! -e ${OUT_FOLDER}/generate_overview_pic.done ]; then
         echo running generate_overview_pic in ${OUT_FOLDER}
 
-        CONTIGS_WITH_GAPS=$(grep "#" ${GFF_IN} | grep "Chr\|BES" | awk '{print $2}' | sort | uniq)
-        #echo CONTIGS_WITH_GAPS: ${CONTIGS_WITH_GAPS}
+        CONTIGS_WITH_GAPS=$(grep "##sequence-region" ${GFF_IN} | grep "Chr\|BES" | awk '{print $2}' | sort | uniq)
+        # echo CONTIGS_WITH_GAPS: ${CONTIGS_WITH_GAPS}
 
         conda deactivate
         conda activate GENEastics_env
@@ -551,6 +584,7 @@ identify_collapsed_regions(){
     fi
 }
 
+
 # Output:
 # ${OUT_FOLDER}/A.fasta
 # ${OUT_FOLDER}/B.fasta
@@ -616,21 +650,71 @@ cut_superfluous_regions(){
     OUT_FOLDER=$1
     GENOME_IN=$2
     ONT_IN=$3
+    DIST_DEV_FILE=$4
+    GAPS_IN=$5
+    GFF_IN=$6
 
     mkdir -p ${OUT_FOLDER}
 
     if [ ! -e ${OUT_FOLDER}/cut_superfluous_regions.done ]; then
         echo running cut_superfluous_regions in ${OUT_FOLDER}
 
-        minimap2 -t 8 -ax map-ont ${GENOME_IN} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools sort -o ${OUT_FOLDER}/reads.bam
+        # this is to inspect the regions that are cut out in jbrowse
 
-        samtools index ${OUT_FOLDER}/reads.bam
+        # minimap2 -t 8 -ax map-ont ${GENOME_IN} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools sort -o ${OUT_FOLDER}/reads.bam
+        # samtools index ${OUT_FOLDER}/reads.bam
+        # samtools view -bSF 256 -q 30 ${OUT_FOLDER}/reads.bam > ${OUT_FOLDER}/reads.filtered.bam
+        # samtools index ${OUT_FOLDER}/reads.filtered.bam
 
+        # but actually we use VPR and the gap annotation to remove the superfluous regions
+        python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py \
+                ${DIST_DEV_FILE} \
+                ${GAPS_IN} \
+                ${OUT_FOLDER}/all_superfluous_regions.gff \
+                inf \
+                500 \
+                False \
+                False \
+                superfluous
+
+        python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py \
+                ${DIST_DEV_FILE} \
+                ${GAPS_IN} \
+                ${OUT_FOLDER}/filtered_superfluous_regions.gff \
+                inf \
+                500 \
+                False \
+                True \
+                superfluous
+
+        cat ${GFF_IN} ${GAPS_IN} ${OUT_FOLDER}/all_superfluous_regions.gff > ${OUT_FOLDER}/all_annotation.gff
+        cat ${GFF_IN} ${GAPS_IN} ${OUT_FOLDER}/filtered_superfluous_regions.gff > ${OUT_FOLDER}/filtered_annotation.gff
 
         echo "OK" > ${OUT_FOLDER}/cut_superfluous_regions.done
     fi
 }
 
+# Output:
+# ${OUT_FOLDER}/masked.fasta
+mask_region(){
+    OUT_FOLDER=$1
+    GENOME_IN=$2
+    GFF_IN=$3
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/mask_region.done ]; then
+        echo running mask_region in ${OUT_FOLDER}
+
+        
+        python3 ${SCRIPTS_DIR}/mask_regions.py \
+            ${GENOME_IN} \
+            ${GFF_IN} \
+            > ${OUT_FOLDER}/masked.fasta
+
+        echo "OK" > ${OUT_FOLDER}/mask_region.done
+    fi
+}
 
 
 main

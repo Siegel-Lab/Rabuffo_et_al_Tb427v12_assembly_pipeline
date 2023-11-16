@@ -33,10 +33,10 @@ def load_gaps(file_name):
 
 
 
-def post_process(ref_names, ref_dev, min_dev = -100, min_map_q=30):
+def post_process(ref_names, ref_dev, min_dev=-100, min_map_q=30, max_dev=-float("inf")):
     data = []
     for r_name, (distance, expected, chr, pos1, pos2, strnd, map_q) in zip(ref_names, ref_dev):
-        if distance < min_dev and map_q >= min_map_q:
+        if distance < min_dev and map_q >= min_map_q and max_dev < distance:
             data.append([chr, min(pos1, pos2), max(pos1, pos2), distance, r_name])
 
     return data
@@ -136,46 +136,63 @@ def merge_overlapping_clusters(new_cluster):
         new_cluster = merge_overlapping_clusters_helper(new_cluster)
     return new_cluster
 
-if __name__ == "__main__":
-    distance_deviation_filename = sys.argv[1] # "../data/out/virtual_paired_read_dist/referece.distance_deviation"
-    reference_gaps_filename = sys.argv[2] # "../data/out/samba_out_1/reference.gaps.gff3"
-    missassemblies_gff_filename = sys.argv[3] # "../data/in/analysis_in/mis_assemblies.gff"
 
+def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gff_filename, min_dev=-100, max_dev=-float("inf"), filter_overlap=True, filter_non_overlap=False, region_name="misassembly"):
+    if isinstance(min_dev, str):
+        min_dev = float(min_dev)
+    if isinstance(max_dev, str):
+        max_dev = float(max_dev)
+    if isinstance(filter_overlap, str):
+        filter_overlap = filter_overlap == "True"
+    if isinstance(filter_non_overlap, str):
+        filter_non_overlap = filter_non_overlap == "True"
     ref_names, ref_dev = load_dist_dev(distance_deviation_filename)
     gap_pos = load_gaps(reference_gaps_filename)
-    data = post_process(ref_names, ref_dev)
+    data = post_process(ref_names, ref_dev, min_dev=min_dev, max_dev=max_dev)
 
     clusters = cluster(data)
     clusters = filter_clusters_with_counter_indication(clusters, data)
-    new_cluster, cluster_overlapping_gap = filter_clusters_that_overlap_gap(clusters, gap_pos)
-    new_cluster = merge_overlapping_clusters(new_cluster)
+    if filter_overlap:
+        kept_clusters, filtered_clusters = filter_clusters_that_overlap_gap(clusters, gap_pos)
+        # print("clusters overlapping gaps")
+        # for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in filtered_clusters:
+        #     print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")
+        # print()
+    elif filter_non_overlap:
+        filtered_clusters, kept_clusters = filter_clusters_that_overlap_gap(clusters, gap_pos)
+        # print("clusters not overlapping gaps")
+        # for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in filtered_clusters:
+        #     print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")
+        # print()
+    else:
+        kept_clusters = clusters
+    kept_clusters = merge_overlapping_clusters(kept_clusters)
 
-    print("clusters overlapping gaps")
-    for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in cluster_overlapping_gap:
-        print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")
-    print()
 
-    print("new clusters")
-    for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in new_cluster:
-        print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")
-    print()
+    # print("kept clusters")
+    # for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in kept_clusters:
+    #     print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")
+    # print()
 
     with open(missassemblies_gff_filename, "w") as file_out:
-        for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in new_cluster:
-            file_out.write("\t".join([cluster_chr + "_Tb427v10", ".", "misassembly", str(cluster_start), str(cluster_end), 
-                                    ".", ".", ".", ""]) + "\n" )
+        for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in kept_clusters:
+            file_out.write("\t".join([cluster_chr + "_Tb427v10", ".", region_name, str(cluster_start), str(cluster_end), ".", ".", ".", ""]) + "\n" )
 
-    gap_without_cluster = {}
-    for gap_name, (gap_chr, gap_start, gap_end) in gap_pos.items():
-        found_gap = False
-        for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in cluster_overlapping_gap:
-            if cluster_chr == gap_chr and cluster_start <= gap_end and cluster_end >= gap_start:
-                found_gap = True
-                break
-        if not found_gap:
-            gap_without_cluster[gap_name] = [gap_chr, gap_start, gap_end]
+    # if filter_overlap:
+    #     gap_without_cluster = {}
+    #     for gap_name, (gap_chr, gap_start, gap_end) in gap_pos.items():
+    #         found_gap = False
+    #         for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in filtered_clusters:
+    #             if cluster_chr == gap_chr and cluster_start <= gap_end and cluster_end >= gap_start:
+    #                 found_gap = True
+    #                 break
+    #         if not found_gap:
+    #             gap_without_cluster[gap_name] = [gap_chr, gap_start, gap_end]
 
-    print("gaps without cluster")
-    for g in gap_without_cluster.keys():
-        print(g)
-    print()
+    #     print("gaps without cluster")
+    #     for g in gap_without_cluster.keys():
+    #         print(g)
+    #     print()
+
+if __name__ == "__main__":
+    main(*sys.argv[1:])
