@@ -111,17 +111,17 @@ main(){
                # -> ${DATA_DIR}/out/4_closed_gaps/gaps.gff3
                # -> ${DATA_DIR}/out/4_closed_gaps/assembly.fasta
 
-    # transfer_annotation ${DATA_DIR}/out/4.1_transfer_annotation \
-    #                     ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
-    #                     ${GFF_IN_XXX} \
-    #                     ${REF_CENTRO}
-    #                     # -> ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff
+    transfer_annotation ${DATA_DIR}/out/4.1_transfer_annotation \
+                        ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
+                        ${GFF_IN_XXX} \
+                        ${REF_CENTRO}
+                        # -> ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff
 
     generate_overview_pic ${DATA_DIR}/out/4.2_overview_of_remaining_gaps \
-                          ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
+                          ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff \
                           "gap" \
                           "gap=purple"
-                        #   ${DATA_DIR}/out/4.1_transfer_annotation/annotation.transfered.gff \
+                        #   ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
 
     split_genome_in_a_and_b ${DATA_DIR}/out/5_split_genome \
                             ${DATA_DIR}/out/4_closed_gaps/assembly.fasta \
@@ -449,29 +449,40 @@ transfer_annotation(){
     if [ ! -e ${OUT_FOLDER}/transfer_annotation.done ]; then
         echo running transfer_annotation in ${OUT_FOLDER}
 
-        conda deactivate
-        conda activate ont_assembly_2
+        # conda deactivate
+        # conda activate ont_assembly_2
 
-        module load ngs/bedtools2/2.26.0
-        module load ncbi-blast/2.7.1+
+        # module load ngs/bedtools2/2.26.0
+        # module load ncbi-blast/2.7.1+
         
-        python3 ${BIN_DIR}/seq_length.py ${ASSEMBLY_IN} > ${OUT_FOLDER}/genome.sizes
+        # python3 ${BIN_DIR}/seq_length.py ${ASSEMBLY_IN} > ${OUT_FOLDER}/genome.sizes
 
-        # Crop coordinates based on chromosome length
+        # # Crop coordinates based on chromosome length
 
-        bedtools slop -i ${GFF_IN} -g ${OUT_FOLDER}/genome.sizes -b 0 > ${OUT_FOLDER}/cropped.gff
+        # bedtools slop -i ${GFF_IN} -g ${OUT_FOLDER}/genome.sizes -b 0 > ${OUT_FOLDER}/cropped.gff
 
-        ## Get fasta sequences for each entry and add it to the annotation file
+        # ## Get fasta sequences for each entry and add it to the annotation file
 
-        bedtools getfasta -tab -fi ${ASSEMBLY_IN} -bed ${OUT_FOLDER}/cropped.gff > ${OUT_FOLDER}/sequences.fasta
+        # bedtools getfasta -tab -fi ${ASSEMBLY_IN} -bed ${OUT_FOLDER}/cropped.gff > ${OUT_FOLDER}/sequences.fasta
 
-        paste ${OUT_FOLDER}/cropped.gff ${OUT_FOLDER}/sequences.fasta > ${OUT_FOLDER}/sequence_annotation.out
+        # paste ${OUT_FOLDER}/cropped.gff ${OUT_FOLDER}/sequences.fasta > ${OUT_FOLDER}/sequence_annotation.out
 
-        ## Run a modified version of Konrad's Förstner script to transfer annotation
-        python3 ${BIN_DIR}/map_annotation_via_string_match.py ${ASSEMBLY_TRANSFER} ${OUT_FOLDER}/sequence_annotation.out ${OUT_FOLDER} ${OUT_FOLDER}/annotation.transfered.gff
+        # ## Run a modified version of Konrad's Förstner script to transfer annotation
+        # python3 ${BIN_DIR}/map_annotation_via_string_match.py ${ASSEMBLY_TRANSFER} ${OUT_FOLDER}/sequence_annotation.out ${OUT_FOLDER} ${OUT_FOLDER}/annotation.transfered.gff
 
-        conda deactivate
-        conda activate ont_assembly
+        # conda deactivate
+        # conda activate ont_assembly
+
+        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+                ${ASSEMBLY_IN} \
+                ${ASSEMBLY_TRANSFER} \
+                ${GFF_IN} \
+                ${OUT_FOLDER}/annotation.failed.gff \
+            > ${OUT_FOLDER}/annotation.transfered.gff
+
+        echo "failed to transfer this many annotations:"
+        wc -l ${OUT_FOLDER}/annotation.failed.gff
+
 
         echo "OK" > ${OUT_FOLDER}/transfer_annotation.done
     fi
