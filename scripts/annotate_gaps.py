@@ -26,15 +26,17 @@ def annotate_gaps(file_in):
             if not last_base_was_gap and is_gap:
                 gap_start = idx + 1
             if last_base_was_gap and not is_gap:
-                gap_end = idx + 1
+                gap_end = idx
                 print(contig_name, ".", "gap", gap_start, gap_end, ".", ".", ".", 
                       "estimated_length=1000;gap_type=within scaffold", sep="\t")
 
             last_base_was_gap = is_gap
         if last_base_was_gap:
-            gap_end = idx + 1
+            gap_end = idx
             print(contig_name, ".", "gap", gap_start, gap_end, ".", ".", ".", 
                     "estimated_length=1000;gap_type=within scaffold", sep="\t")
+
+
 
 if __name__ == "__main__":
     annotate_gaps(*sys.argv[1:])

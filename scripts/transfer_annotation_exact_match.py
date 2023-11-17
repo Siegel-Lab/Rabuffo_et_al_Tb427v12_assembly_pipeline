@@ -29,6 +29,9 @@ def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_no
     with open(annos_not_found, "w") as out_file:
         with fileinput.input(annotation) as in_file:
             for line in in_file:
+                if line[0] == "#":
+                    print(line, end="")
+                    continue
                 ctg, a, b, start, end, *extra = line.strip().split()
                 seq = old_contigs[ctg][int(start):int(end)]
                 if ctg in new_contigs and seq in new_contigs[ctg]:
