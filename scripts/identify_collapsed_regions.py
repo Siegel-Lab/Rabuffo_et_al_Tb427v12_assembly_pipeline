@@ -19,17 +19,22 @@ def load_dist_dev(file_name, max_dist=None):
 
 def load_gaps(file_name):
     gap_pos = {}
+    contig_sizes = {}
 
     with open(file_name, "r") as in_file:
         for line in in_file:
             if line[0] == "#":
+                if line.startswith("##sequence-region"):
+                    contig, _, end = line.strip().split()[1:]
+                    contig = contig[:-len("_Tb427v10")]
+                    contig_sizes[contig] = int(end)
                 continue
             contig, source, anno_type, start, end, *extra = line.strip().split()
             contig = contig[:-len("_Tb427v10")]
             
             gap_name = contig + ":" + str(int(start)//1000) + "kbp"
             gap_pos[gap_name] = [contig, int(start), int(end)]
-    return gap_pos
+    return gap_pos, contig_sizes
 
 
 
@@ -112,16 +117,20 @@ def filter_clusters_that_overlap_gap(clusters, gap_pos, min_distance_to_gap=1000
     return new_cluster, cluster_overlapping_gap
 
 
-def has_overlapping_clusters(clusters):
+def has_overlapping_clusters(clusters, cut_back_distance=1000):
     for a, b in zip(clusters[:-1], clusters[1:]):
-        if a[0] == b[0] and a[2] >= b[1]:
+        if a[0] == b[0] and a[2] + cut_back_distance*3 >= b[1]:
             return True
     return False
 
-def merge_overlapping_clusters_helper(new_cluster):
+def merge_overlapping_clusters_helper(new_cluster, contig_sizes, cut_back_distance=1000):
     ret = []
     for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in new_cluster:
-        if len(ret) == 0 or ret[-1][0] != cluster_chr or ret[-1][2] < cluster_start:
+        if cluster_start < cut_back_distance*2:
+            continue
+        if cluster_end > contig_sizes[cluster_chr] - cut_back_distance*2:
+            continue
+        if len(ret) == 0 or ret[-1][0] != cluster_chr or ret[-1][2] + cut_back_distance*3 < cluster_start:
             ret.append([cluster_chr, cluster_start, cluster_end, cluster_deviation, c])
         else:
             ret[-1][2] = max(ret[-1][2], cluster_end)
@@ -129,15 +138,15 @@ def merge_overlapping_clusters_helper(new_cluster):
             ret[-1][3] = sum([x[3] for x in ret[-1][4]]) / len(ret[-1][4])
     return ret
 
-def merge_overlapping_clusters(new_cluster):
+def merge_overlapping_clusters(new_cluster, contig_sizes, cut_back_distance=1000):
     new_cluster.sort(key=lambda x: (x[0], x[1]))
 
-    while has_overlapping_clusters(new_cluster):
-        new_cluster = merge_overlapping_clusters_helper(new_cluster)
+    while has_overlapping_clusters(new_cluster, cut_back_distance):
+        new_cluster = merge_overlapping_clusters_helper(new_cluster, contig_sizes, cut_back_distance=cut_back_distance)
     return new_cluster
 
 
-def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gff_filename, min_dev=-100, max_dev=-float("inf"), filter_overlap=True, filter_non_overlap=False, region_name="misassembly"):
+def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gff_filename, min_dev=-100, max_dev=-float("inf"), filter_overlap=True, filter_non_overlap=False, region_name="misassembly", cut_back_distance=1000):
     if isinstance(min_dev, str):
         min_dev = float(min_dev)
     if isinstance(max_dev, str):
@@ -147,7 +156,7 @@ def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gf
     if isinstance(filter_non_overlap, str):
         filter_non_overlap = filter_non_overlap == "True"
     ref_names, ref_dev = load_dist_dev(distance_deviation_filename)
-    gap_pos = load_gaps(reference_gaps_filename)
+    gap_pos, contig_sizes = load_gaps(reference_gaps_filename)
     data = post_process(ref_names, ref_dev, min_dev=min_dev, max_dev=max_dev)
 
     clusters = cluster(data)
@@ -166,7 +175,7 @@ def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gf
         # print()
     else:
         kept_clusters = clusters
-    kept_clusters = merge_overlapping_clusters(kept_clusters)
+    kept_clusters = merge_overlapping_clusters(kept_clusters, contig_sizes, cut_back_distance=cut_back_distance)
 
 
     # print("kept clusters")

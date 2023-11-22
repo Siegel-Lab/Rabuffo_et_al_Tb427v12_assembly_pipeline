@@ -26,19 +26,27 @@ def load_contigs(fasta_in):
 def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_not_found):
     old_contigs = load_contigs(old_genome)
     new_contigs = load_contigs(new_genome)
+    print("##gff-version 3")
+    for name, seq in new_contigs.items():
+        print("##sequence-region", name, "1", len(seq), sep="\t")
     with open(annos_not_found, "w") as out_file:
         with fileinput.input(annotation) as in_file:
             for line in in_file:
                 if line[0] == "#":
-                    print(line, end="")
                     continue
-                ctg, a, b, start, end, *extra = line.strip().split()
-                seq = old_contigs[ctg][int(start):int(end)]
-                if ctg in new_contigs and seq in new_contigs[ctg]:
-                    new_start = new_contigs[ctg].index(seq)
-                    print(ctg, a, b, new_start, new_start + len(seq), *extra, sep="\t")
+                ctg, a, b, start, end, *extra = line.strip().split("\t")
+                if ctg in old_contigs:
+                    seq = old_contigs[ctg][int(start):int(end)]
+                    if seq in new_contigs[ctg]:
+                        new_start = new_contigs[ctg].index(seq)
+                        if seq in new_contigs[ctg][new_start + len(seq):]:
+                            out_file.write("multiple_matches:\t" + line)
+                        else:
+                            print(ctg, a, b, new_start + 1, new_start + len(seq) + 1, *extra, sep="\t")
+                    else:
+                        out_file.write("no_match:\t" + line)
                 else:
-                    out_file.write(line)
+                    out_file.write("contig_not_found:\t" + line)
 
 
 

@@ -17,6 +17,7 @@ def iterate_contigs(fasta_in):
             yield contig_name, contig
 
 def annotate_gaps(file_in):
+    next_gap_id=1
     for contig_name, contig in iterate_contigs(file_in):
         gap_start = None
         gap_end = None
@@ -28,13 +29,15 @@ def annotate_gaps(file_in):
             if last_base_was_gap and not is_gap:
                 gap_end = idx
                 print(contig_name, ".", "gap", gap_start, gap_end, ".", ".", ".", 
-                      "estimated_length=1000;gap_type=within scaffold", sep="\t")
+                      "estimated_length=1000;gap_type=within scaffold;ID=" + str(next_gap_id), sep="\t")
+                next_gap_id += 1
 
             last_base_was_gap = is_gap
         if last_base_was_gap:
             gap_end = idx
             print(contig_name, ".", "gap", gap_start, gap_end, ".", ".", ".", 
-                    "estimated_length=1000;gap_type=within scaffold", sep="\t")
+                    "estimated_length=1000;gap_type=within scaffold;ID=" + str(next_gap_id), sep="\t")
+            next_gap_id += 1
 
 
 

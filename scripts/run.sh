@@ -51,13 +51,13 @@ main(){
 
     # move the Centromere annotation from the assembly where the cores are merged to the fully phased assembly
     # @todo this does not work with an exact match...
-    move_annotation ${DATA_DIR}/out/1_move_centro_anno \
-                    "Centromere" \
-                    ${GFF_CENTRO_IN} \
-                    ${REF_CENTRO} \
-                    ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-                    ${GFF_IN_XXX}
-                    # -> ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
+    # move_annotation ${DATA_DIR}/out/1_move_centro_anno \
+    #                 "Centromere" \
+    #                 ${GFF_CENTRO_IN} \
+    #                 ${REF_CENTRO} \
+    #                 ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+    #                 ${GFF_IN_XXX}
+    #                 # -> ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
 
     # reannotate the gaps in the fully phased assembly
     annotate_gaps ${DATA_DIR}/out/2_ref_reannotated_gaps \
@@ -73,13 +73,11 @@ main(){
     mask_and_close ${DATA_DIR}/out/4_close_gaps_full_genome \
                    ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                    ${ONT_READS_IN} \
-                   ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff \
-                    # -> ${DATA_DIR}/out/4_close_gaps_full_genome/7_closed_gaps/assembly.fasta
-                    # -> ${DATA_DIR}/out/4_close_gaps_full_genome/7_closed_gaps/gaps.gff3
-                    # -> ${DATA_DIR}/out/4_close_gaps_full_genome/8_transfer_annotation/annotation.transfered.gff
+                   ${GFF_IN_XXX} \
+                    # -> ${DATA_DIR}/out/4_close_gaps_full_genome/11_undo_failed_masking/masking_undone.fasta
 
     split_genome_in_a_and_b ${DATA_DIR}/out/5_split_genome \
-                            ${DATA_DIR}/out/4_close_gaps_full_genome/7_closed_gaps/assembly.fasta \
+                            ${DATA_DIR}/out/4_close_gaps_full_genome/11_undo_failed_masking/masking_undone.fasta \
                             ${ONT_READS_IN}
                             # -> ${DATA_DIR}/out/5_split_genome/A.fasta
                             # -> ${DATA_DIR}/out/5_split_genome/B.fasta
@@ -91,47 +89,110 @@ main(){
     mask_and_close ${DATA_DIR}/out/6_closed_gaps_a \
                    ${DATA_DIR}/out/5_split_genome/A.fasta \
                    ${DATA_DIR}/out/5_split_genome/reads.A.fasta \
-                   ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff \
-                    # -> ${DATA_DIR}/out/6_closed_gaps_a/7_closed_gaps/assembly.fasta
-                    # -> ${DATA_DIR}/out/6_closed_gaps_a/7_closed_gaps/gaps.gff3
-                    # -> ${DATA_DIR}/out/6_closed_gaps_a/8_transfer_annotation/annotation.transfered.gff
+                   ${GFF_IN_XXX} \
+                    # -> ${DATA_DIR}/out/6_closed_gaps_a/11_undo_failed_masking/masking_undone.fasta
     
     mask_and_close ${DATA_DIR}/out/7_closed_gaps_b \
                    ${DATA_DIR}/out/5_split_genome/B.fasta \
                    ${DATA_DIR}/out/5_split_genome/reads.B.fasta \
-                   ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff \
-                    # -> ${DATA_DIR}/out/7_closed_gaps_b/7_closed_gaps/assembly.fasta
-                    # -> ${DATA_DIR}/out/7_closed_gaps_b/7_closed_gaps/gaps.gff3
-                    # -> ${DATA_DIR}/out/7_closed_gaps_b/8_transfer_annotation/annotation.transfered.gff
+                   ${GFF_IN_XXX} \
+                    # -> ${DATA_DIR}/out/7_closed_gaps_b/11_undo_failed_masking/masking_undone.fasta
 
 
     merge_genomes ${DATA_DIR}/out/8_merged_genomes \
-                  ${DATA_DIR}/out/6_closed_gaps_a/7_closed_gaps/assembly.fasta \
-                  ${DATA_DIR}/out/6_closed_gaps_a/7_closed_gaps/gaps.gff3 \
-                  ${DATA_DIR}/out/7_closed_gaps_b/7_closed_gaps/assembly.fasta \
-                  ${DATA_DIR}/out/7_closed_gaps_b/7_closed_gaps/gaps.gff3 \
+                  ${DATA_DIR}/out/6_closed_gaps_a/11_undo_failed_masking/masking_undone.fasta \
+                  ${DATA_DIR}/out/7_closed_gaps_b/11_undo_failed_masking/masking_undone.fasta \
                   ${DATA_DIR}/out/5_split_genome/remainder.fasta
                  # -> ${DATA_DIR}/out/8_merged_genomes/assembly.fasta
                  # -> ${DATA_DIR}/out/8_merged_genomes/annotation.gff
 
 
-    # transfer_annotation ${DATA_DIR}/out/8.1_transfer_annotation \
-    #                     ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
-    #                     ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff \
-    #                     ${REF_CENTRO}
-    #                     # -> ${DATA_DIR}/out/8.1_transfer_annotation/annotation.transfered.gff
+    transfer_annotation ${DATA_DIR}/out/8.1_transfer_annotation \
+                        ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
+                        ${GFF_IN_XXX} \
+                        ${REF_CENTRO} \
+                        ${DATA_DIR}/out/8_merged_genomes/annotation.gff
+                        # -> ${DATA_DIR}/out/8.1_transfer_annotation/annotation_combined.gff
 
     generate_overview_pic ${DATA_DIR}/out/9_overview_of_remaining_gaps \
-                           ${DATA_DIR}/out/8_merged_genomes/annotation.gff \
+                          ${DATA_DIR}/out/8.1_transfer_annotation/annotation_combined.gff \
                           "gap" \
                           "gap=purple"
-                        #   ${DATA_DIR}/out/8.1_transfer_annotation/annotation.transfered.gff \
+                           #${DATA_DIR}/out/8_merged_genomes/annotation.gff \
+
+    identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
+        ${DATA_DIR}/out/4_close_gaps_full_genome/1_gap_spanning_reads/distance_deviation.tsv \
+        ${DATA_DIR}/out/8_merged_genomes/annotation.gff \
+        ${DATA_DIR}/out/8_merged_genomes/annotation.gff
+        # -> ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff
+
+    generate_overview_pic ${DATA_DIR}/out/14_overview_collapsed_repeats \
+                          ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff \
+                          "misassembly gap" \
+                          "misassembly=pink;gap=purple"
+
+    mask_region ${DATA_DIR}/out/15_masked_repeats \
+                ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
+                ${DATA_DIR}/out/13_identify_collapsed_regions/collapsed_regions.gff
+                # -> ${DATA_DIR}/out/15_masked_repeats/masked.fasta
+
+    annotate_gaps ${DATA_DIR}/out/16_reannotated_gaps \
+                ${DATA_DIR}/out/15_masked_repeats/masked.fasta
+                # -> ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3
+
+    generate_overview_pic ${DATA_DIR}/out/17_overview_of_masked_regions \
+                        ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3 \
+                        "gap" \
+                        "gap=purple"
+
+    close_gaps ${DATA_DIR}/out/18_closed_gaps \
+            ${DATA_DIR}/out/15_masked_repeats \
+            masked \
+            ${ONT_READS_IN} \
+            ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3
+            # -> ${DATA_DIR}/out/18_closed_gaps/gaps.gff3
+            # -> ${DATA_DIR}/out/18_closed_gaps/assembly.fasta
+            
+
+    undo_masking ${DATA_DIR}/out/18.1_undo_failed_masking \
+                ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+                ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3 \
+                ${DATA_DIR}/out/18_closed_gaps/gaps.gff3 \
+                ${DATA_DIR}/out/15_masked_repeats/removed_sequences.fasta
+                # -> ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta
+                # -> ${DATA_DIR}/out/18.1_undo_failed_masking/gaps.gff
+
+    transfer_annotation ${DATA_DIR}/out/19_transfer_annotation \
+                        ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+                        ${GFF_IN_XXX} \
+                        ${REF_CENTRO} \
+                        ${DATA_DIR}/out/18.1_undo_failed_masking/gaps.gff
+                        # -> ${MaC_OUT_FOLDER}/19_transfer_annotation/annotation_combined.gff
+
+    transfer_fixed_regions ${DATA_DIR}/out/20_transfer_fixed_regions \
+                        "closedgap_full;${DATA_DIR}/out/4_close_gaps_full_genome/7.1_undo_failed_masking \
+                         closedgap_a;${DATA_DIR}/out/6_closed_gaps_a/7.1_undo_failed_masking \
+                         closedgap_b;${DATA_DIR}/out/7_closed_gaps_b/7.1_undo_failed_masking \
+                         expanded_region;${DATA_DIR}/out/18.1_undo_failed_masking" \
+                        ${MaC_OUT_FOLDER}/19_transfer_annotation/annotation_combined.gff
+
+
+    generate_overview_pic ${DATA_DIR}/out/21_overview_of_remaining_gaps \
+                        ${DATA_DIR}/out/19_transfer_annotation/annotation_combined.gff \
+                        "gene filledgap gap" \
+                        "gene=lightgrey;filledgap=green;gap=purple"
+                        #${DATA_DIR}/out/18_closed_gaps/gaps.gff3 \
+
+    # here is the analysis part at the end!
+
+    align_reads_to_genome ${DATA_DIR}/out/22_aligned_reads_on_new_genome \
+        ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+        ${ONT_READS_IN}
 
     # virtual_paired_read_distance ${DATA_DIR}/out/10_vpr_new_genome \
     #                              ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
     #                              ${ONT_READS_IN}
     #                              # -> ${DATA_DIR}/out/10_vpr_new_genome/distance_deviation.tsv
-
 
     # analyze_gaps_closed_correctly ${DATA_DIR}/out/11_analyze_gaps_closed_correctly \
     #                               ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
@@ -146,26 +207,10 @@ main(){
     #                       "gap fixedgap" \
     #                       "gap=purple;fixedgap=green"
 
-
-    # identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
-    #     ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
-    #     ${DATA_DIR}/out/4_closed_gaps/gaps.gff3 \
-    #     ${DATA_DIR}/out/4_closed_gaps/empty.annotation.gff3
-    #     # -> ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff
-
-    # generate_overview_pic ${DATA_DIR}/out/14_overview_collapsed_repeats \
-    #                       ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff \
-    #                       "misassembly gap" \
-    #                       "misassembly=pink;gap=purple"
-
-
-
 }
 
 # Output:
-# ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta
-# ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation.transfered.gff
-# ${MaC_OUT_FOLDER}/7_closed_gaps/gaps.gff3
+# ${MaC_OUT_FOLDER}/11_undo_failed_masking/masking_undone.fasta
 mask_and_close(){
     MaC_OUT_FOLDER=$1
     MaC_GENOME=$2
@@ -173,69 +218,80 @@ mask_and_close(){
     MaC_GFF_IN=$4
 
     mkdir -p ${MaC_OUT_FOLDER}
-    if [ ! -e ${MaC_OUT_FOLDER}/mask_and_close.done ]; then
-        echo running mask_and_close in ${MaC_OUT_FOLDER}
 
-        
-        annotate_gaps ${MaC_OUT_FOLDER}/0_reannotated_gaps \
-                    ${MaC_GENOME}
-                    # -> ${MaC_OUT_FOLDER}/0_reannotated_gaps/gaps.gff3
 
-        gap_spanning_reads ${MaC_OUT_FOLDER}/1_gap_spanning_reads \
-                       ${MaC_GENOME} \
-                       ${MaC_READS_IN} \
-                       ${MaC_OUT_FOLDER}/0_reannotated_gaps/gaps.gff3
-                        # -> ${MaC_OUT_FOLDER}/1_gap_spanning_reads/distance_deviation.tsv
+    annotate_gaps ${MaC_OUT_FOLDER}/0_reannotated_gaps \
+                ${MaC_GENOME}
+                # -> ${MaC_OUT_FOLDER}/0_reannotated_gaps/gaps.gff3
 
-        cut_superfluous_regions ${MaC_OUT_FOLDER}/2_cut_superfluous_regions \
-                                ${MaC_GENOME} \
-                                ${MaC_READS_IN} \
-                                ${MaC_OUT_FOLDER}/1_gap_spanning_reads/distance_deviation.tsv \
-                                ${MaC_OUT_FOLDER}/0_reannotated_gaps/gaps.gff3 \
-                                ${MaC_GFF_IN}
-                                # -> ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/all_annotation.gff
-                                # -> ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/filtered_superfluous_regions.gff
-
-        generate_overview_pic ${MaC_OUT_FOLDER}/3_overview_of_superfluous_regions \
-                            ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/all_annotation.gff \
-                            "gene superfluous gap" \
-                            "gene=lightgrey;gap=purple;superfluous=pink"
-
-        mask_region ${MaC_OUT_FOLDER}/4_masked_superfluous_regions \
+    gap_spanning_reads ${MaC_OUT_FOLDER}/1_gap_spanning_reads \
                     ${MaC_GENOME} \
-                    ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/filtered_superfluous_regions.gff
-                    # -> ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/masked.fasta
+                    ${MaC_READS_IN} \
+                    ${MaC_OUT_FOLDER}/0_reannotated_gaps/gaps.gff3
+                    # -> ${MaC_OUT_FOLDER}/1_gap_spanning_reads/distance_deviation.tsv
 
-        annotate_gaps ${MaC_OUT_FOLDER}/5_annotate_new_gaps \
-                    ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/masked.fasta
-                    # -> ${MaC_OUT_FOLDER}/5_annotate_new_gaps/gaps.gff3
+    cut_superfluous_regions ${MaC_OUT_FOLDER}/2_cut_superfluous_regions \
+                            ${MaC_GENOME} \
+                            ${MaC_READS_IN} \
+                            ${MaC_OUT_FOLDER}/1_gap_spanning_reads/distance_deviation.tsv \
+                            ${MaC_OUT_FOLDER}/0_reannotated_gaps/gaps.gff3 \
+                            # -> ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/all_annotation.gff
+                            # -> ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/filtered_superfluous_regions.gff
 
-        generate_overview_pic ${MaC_OUT_FOLDER}/6_overview_of_masked_regions \
-                            ${MaC_OUT_FOLDER}/5_annotate_new_gaps/gaps.gff3 \
-                            "gap" \
-                            "gap=purple"
+    generate_overview_pic ${MaC_OUT_FOLDER}/3_overview_of_superfluous_regions \
+                        ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/all_annotation.gff \
+                        "gene superfluous gap" \
+                        "gene=lightgrey;gap=purple;superfluous=pink"
 
-        close_gaps ${MaC_OUT_FOLDER}/7_closed_gaps \
-                ${MaC_OUT_FOLDER}/4_masked_superfluous_regions \
-                masked \
-                ${MaC_READS_IN}
-                # -> ${MaC_OUT_FOLDER}/7_closed_gaps/gaps.gff3
-                # -> ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta
+    mask_region ${MaC_OUT_FOLDER}/4_masked_superfluous_regions \
+                ${MaC_GENOME} \
+                ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/filtered_superfluous_regions.gff
+                # -> ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/masked.fasta
+                # -> ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/removed_sequences.fasta
 
-        transfer_annotation ${MaC_OUT_FOLDER}/8_transfer_annotation \
-                            ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta \
-                            ${MaC_GFF_IN} \
-                            ${REF_CENTRO}
-                            # -> ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation.transfered.gff
+    annotate_gaps ${MaC_OUT_FOLDER}/5_annotate_new_gaps \
+                ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/masked.fasta
+                # -> ${MaC_OUT_FOLDER}/5_annotate_new_gaps/gaps.gff3
 
-        generate_overview_pic ${MaC_OUT_FOLDER}/9_overview_of_remaining_gaps \
-                            ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation.transfered.gff \
-                            "gene filledgap gap" \
-                            "gene=lightgrey;filledgap=green;gap=purple"
+    generate_overview_pic ${MaC_OUT_FOLDER}/6_overview_of_masked_regions \
+                        ${MaC_OUT_FOLDER}/5_annotate_new_gaps/gaps.gff3 \
+                        "gap" \
+                        "gap=purple"
+
+    close_gaps ${MaC_OUT_FOLDER}/7_closed_gaps \
+            ${MaC_OUT_FOLDER}/4_masked_superfluous_regions \
+            masked \
+            ${MaC_READS_IN} \
+            ${MaC_OUT_FOLDER}/5_annotate_new_gaps/gaps.gff3
+            # -> ${MaC_OUT_FOLDER}/7_closed_gaps/gaps.gff3
+            # -> ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta
+
+    undo_masking ${MaC_OUT_FOLDER}/7.1_undo_failed_masking \
+                ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta \
+                ${MaC_OUT_FOLDER}/5_annotate_new_gaps/gaps.gff3 \
+                ${MaC_OUT_FOLDER}/7_closed_gaps/gaps.gff3 \
+                ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/removed_sequences.fasta
+                # -> ${MaC_OUT_FOLDER}/7.1_undo_failed_masking/masking_undone.fasta
+                # -> ${MaC_OUT_FOLDER}/7.1_undo_failed_masking/gaps.gff
+
+    transfer_annotation ${MaC_OUT_FOLDER}/8_transfer_annotation \
+                        ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta \
+                        ${MaC_GFF_IN} \
+                        ${MaC_GENOME} \
+                        ""
+                        # -> ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation_combined.gff
+
+    generate_overview_pic ${MaC_OUT_FOLDER}/9_overview_of_remaining_gaps \
+                        ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation_combined.gff \
+                        "gene filledgap gap" \
+                        "gene=lightgrey;filledgap=green;gap=purple"
+
+    # align_reads_to_genome ${MaC_OUT_FOLDER}/10_aligned_reads \
+    #     ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta \
+    #     ${MaC_READS_IN}
 
 
-        echo "OK" > ${MaC_OUT_FOLDER}/mask_and_close.done
-    fi
+
 }
 
 # Output:
@@ -318,6 +374,7 @@ close_gaps()
     REFERENCE_FOLDER=$2
     REFERENCE_NAME=$3
     READS_IN=$4
+    GAPS_IN=$5
 
     mkdir -p ${OUT_FOLDER}
 
@@ -331,14 +388,11 @@ close_gaps()
 
         python3 ${SCRIPTS_DIR}/fixup_number_of_n.py ${OUT_FOLDER}/${REFERENCE_NAME}.fasta.split.joined.fa 100 1000 > ${OUT_FOLDER}/assembly.fasta
 
-        annotate_gaps ${OUT_FOLDER} \
-                      ${OUT_FOLDER}/assembly.fasta
-        # -> ${OUT_FOLDER}/gaps.gff3
-
         python3 ${SCRIPTS_DIR}/annotate_closed_gaps.py \
                 ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta \
                 ${OUT_FOLDER}/assembly.fasta \
-            >> ${OUT_FOLDER}/gaps.gff3
+                ${GAPS_IN} \
+            > ${OUT_FOLDER}/gaps.gff3
 
 
         echo "N's before running mascura (here, a gap consists of 1,000 Ns):" > ${OUT_FOLDER}/stats.txt
@@ -346,13 +400,46 @@ close_gaps()
         echo "N's after running mascura (here, a gap consists of 1,000 Ns):" >> ${OUT_FOLDER}/stats.txt
         grep -o "N" ${OUT_FOLDER}/assembly.fasta | wc -l >> ${OUT_FOLDER}/stats.txt
 
-        echo "Number of contigs before running mascura:" >> ${OUT_FOLDER}/stats.txt
+        echo "Number of contigs before running samba:" >> ${OUT_FOLDER}/stats.txt
         grep -c ">" ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta >> ${OUT_FOLDER}/stats.txt
 
-        echo "Number of contigs after running mascura:" >> ${OUT_FOLDER}/stats.txt
+        echo "Number of contigs after running samba:" >> ${OUT_FOLDER}/stats.txt
         grep -c ">" ${OUT_FOLDER}/assembly.fasta >> ${OUT_FOLDER}/stats.txt
 
         echo "OK" > ${OUT_FOLDER}/close_gaps.done
+    fi
+}
+
+# Output:
+# ${OUT_FOLDER}/assembly.fasta
+#
+merge_contigs()
+{
+    OUT_FOLDER=$1
+    REFERENCE_FOLDER=$2
+    REFERENCE_NAME=$3
+    READS_IN=$4
+
+    mkdir -p ${OUT_FOLDER}
+
+
+    if [ ! -e ${OUT_FOLDER}/merge_contigs.done ]; then
+        echo running merge_contigs in ${OUT_FOLDER}
+
+        cd ${OUT_FOLDER}
+        ${BIN_DIR}/MaSuRCA-4.1.0/bin/samba.sh -r ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta -q ${READS_IN} -t 18 -m 500 -d ont
+        cd ${SCRIPTS_DIR}
+
+        cp ${OUT_FOLDER}/${REFERENCE_NAME}.fasta.scaffolds.fa ${OUT_FOLDER}/assembly.fasta 
+
+
+        echo "Number of contigs before running samba:" >> ${OUT_FOLDER}/stats.txt
+        grep -c ">" ${REFERENCE_FOLDER}/${REFERENCE_NAME}.fasta >> ${OUT_FOLDER}/stats.txt
+
+        echo "Number of contigs after running samba:" >> ${OUT_FOLDER}/stats.txt
+        grep -c ">" ${OUT_FOLDER}/assembly.fasta >> ${OUT_FOLDER}/stats.txt
+
+        echo "OK" > ${OUT_FOLDER}/merge_contigs.done
     fi
 }
 
@@ -453,11 +540,13 @@ move_annotation(){
 
 # Output:
 # ${OUT_FOLDER}/annotation.transfered.gff
+# ${OUT_FOLDER}/annotation_combined.gff
 transfer_annotation(){
     OUT_FOLDER=$1
     ASSEMBLY_TRANSFER=$2
     GFF_IN=$3
     ASSEMBLY_IN=$4
+    GFF_TRANSFER=$5
 
     mkdir -p ${OUT_FOLDER}
 
@@ -473,7 +562,12 @@ transfer_annotation(){
 
         echo "failed to transfer this many annotations:"
         wc -l ${OUT_FOLDER}/annotation.failed.gff
-
+        if [ ! -z "$GFF_TRANSFER" ]
+        then
+            grep -v "#" ${GFF_TRANSFER} > ${OUT_FOLDER}/gff_transfer.no#.gff
+            cat ${OUT_FOLDER}/annotation.transfered.gff ${OUT_FOLDER}/gff_transfer.no#.gff > ${OUT_FOLDER}/annotation_combined.gff
+        fi
+ 
         echo "OK" > ${OUT_FOLDER}/transfer_annotation.done
     fi
 }
@@ -511,7 +605,7 @@ generate_overview_pic(){
         echo "" > ${OUT_FOLDER}/stats.txt
         for F in ${FEATURES}; do
             echo -n "${F} " >> ${OUT_FOLDER}/stats.txt
-            grep ${F} ${GFF_IN} | wc -l >> ${OUT_FOLDER}/stats.txt
+            grep -P "\t${F}\t" ${GFF_IN} | wc -l >> ${OUT_FOLDER}/stats.txt
         done
 
         echo "OK" > ${OUT_FOLDER}/generate_overview_pic.done
@@ -544,13 +638,6 @@ analyze_gaps_closed_correctly(){
         grep -v "gap" ${GFF_IN} > ${OUT_FOLDER}/annotation.gapless.gff
 
         cat ${OUT_FOLDER}/annotation.gapless.gff ${OUT_FOLDER}/gaps_closed_correctly.gff > ${OUT_FOLDER}/gaps_fixed.gff3
-
-
-        # python3 ${SCRIPTS_DIR}/close_gap_annotation_in_gff.py \
-        #         ${GFF_IN} \
-        #         ${OUT_FOLDER}/remaining.gaps.gff \
-        #         ${OUT_FOLDER}/gaps_closed_correctly.gff \
-        #     > ${OUT_FOLDER}/gaps_fixed.gff3
 
 
         echo "OK" > ${OUT_FOLDER}/analyze_gaps_closed_correctly.done
@@ -632,10 +719,8 @@ split_genome_in_a_and_b(){
 merge_genomes(){
     OUT_FOLDER=$1
     GENOME_A=$2
-    GFF_A=$3
-    GENOME_B=$4
-    GFF_B=$5
-    GENOME_C=$6
+    GENOME_B=$3
+    GENOME_C=$4
 
     mkdir -p ${OUT_FOLDER}
 
@@ -644,12 +729,17 @@ merge_genomes(){
 
         cat ${GENOME_A} ${GENOME_B} ${GENOME_C} > ${OUT_FOLDER}/assembly.fasta
 
-        grep -v "#" ${GFF_A} > ${OUT_FOLDER}/a.no#.gff
-        grep "#" ${GFF_A} > ${OUT_FOLDER}/a.#.gff
-        grep -v "#" ${GFF_B} > ${OUT_FOLDER}/b.no#.gff
-        grep "#" ${GFF_B} | grep -v "gff-version" > ${OUT_FOLDER}/b.#.gff
+        annotate_gaps ${OUT_FOLDER} \
+                      ${OUT_FOLDER}/assembly.fasta
+                      # -> ${OUT_FOLDER}/annotation.gff
 
-        cat ${OUT_FOLDER}/a.#.gff ${OUT_FOLDER}/b.#.gff ${OUT_FOLDER}/a.no#.gff ${OUT_FOLDER}/b.no#.gff > ${OUT_FOLDER}/annotation.gff
+        # grep -v "#" ${GFF_A} > ${OUT_FOLDER}/a.no#.gff
+        # grep -v "#" ${GFF_B} > ${OUT_FOLDER}/b.no#.gff
+
+        # echo "##gff-version 3" > ${OUT_FOLDER}/annotation.gff
+        # faidx ${OUT_FOLDER}/assembly.fasta -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/annotation.gff
+
+        # cat ${OUT_FOLDER}/a.no#.gff ${OUT_FOLDER}/b.no#.gff >> ${OUT_FOLDER}/annotation.gff
 
         echo "OK" > ${OUT_FOLDER}/merge_genomes.done
     fi
@@ -662,7 +752,6 @@ cut_superfluous_regions(){
     ONT_IN=$3
     DIST_DEV_FILE=$4
     GAPS_IN=$5
-    GFF_IN=$6
 
     mkdir -p ${OUT_FOLDER}
 
@@ -670,11 +759,6 @@ cut_superfluous_regions(){
         echo running cut_superfluous_regions in ${OUT_FOLDER}
 
         # this is to inspect the regions that are cut out in jbrowse
-
-        # minimap2 -t 8 -ax map-ont ${GENOME_IN} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools sort -o ${OUT_FOLDER}/reads.bam
-        # samtools index ${OUT_FOLDER}/reads.bam
-        # samtools view -bSF 256 -q 30 ${OUT_FOLDER}/reads.bam > ${OUT_FOLDER}/reads.filtered.bam
-        # samtools index ${OUT_FOLDER}/reads.filtered.bam
 
         # but actually we use VPR and the gap annotation to remove the superfluous regions
         python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py \
@@ -697,15 +781,37 @@ cut_superfluous_regions(){
                 True \
                 superfluous
 
-        cat ${GFF_IN} ${GAPS_IN} ${OUT_FOLDER}/all_superfluous_regions.gff > ${OUT_FOLDER}/all_annotation.gff
-        cat ${GFF_IN} ${GAPS_IN} ${OUT_FOLDER}/filtered_superfluous_regions.gff > ${OUT_FOLDER}/filtered_annotation.gff
+        cat ${GAPS_IN} ${OUT_FOLDER}/all_superfluous_regions.gff > ${OUT_FOLDER}/all_annotation.gff
+        cat ${GAPS_IN} ${OUT_FOLDER}/filtered_superfluous_regions.gff > ${OUT_FOLDER}/filtered_annotation.gff
 
         echo "OK" > ${OUT_FOLDER}/cut_superfluous_regions.done
     fi
 }
 
+align_reads_to_genome(){
+    OUT_FOLDER=$1
+    GENOME_IN=$2
+    ONT_IN=$3
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/align_reads_to_genome.done ]; then
+        echo running align_reads_to_genome in ${OUT_FOLDER}
+
+        # this is to inspect the regions that are cut out in jbrowse
+
+        minimap2 -t 8 -ax map-ont ${GENOME_IN} ${ONT_IN} 2> ${OUT_FOLDER}/reads.minimap.errlog | samtools view -hF 256 -q 30 | samtools sort -@ 8 -o ${OUT_FOLDER}/reads.bam
+        samtools index -@ 8 ${OUT_FOLDER}/reads.bam
+
+
+        echo "OK" > ${OUT_FOLDER}/align_reads_to_genome.done
+    fi
+
+}
+
 # Output:
 # ${OUT_FOLDER}/masked.fasta
+# ${OUT_FOLDER}/removed_sequences.fasta
 mask_region(){
     OUT_FOLDER=$1
     GENOME_IN=$2
@@ -720,9 +826,82 @@ mask_region(){
         python3 ${SCRIPTS_DIR}/mask_regions.py \
             ${GENOME_IN} \
             ${GFF_IN} \
+            ${OUT_FOLDER}/removed_sequences.fasta \
             > ${OUT_FOLDER}/masked.fasta
 
         echo "OK" > ${OUT_FOLDER}/mask_region.done
+    fi
+}
+
+# Output:
+# ${OUT_FOLDER}/masking_undone.fasta
+# ${OUT_FOLDER}/gaps.gff
+undo_masking(){
+    OUT_FOLDER=$1
+    GENOME_AFTER_CLOSING=$2
+    GAPS_BEFORE_CLOSING=$3
+    GAPS_AFTER_CLOSING=$4
+    MASKED_SEQUENCES=$5
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/undo_masking.done ]; then
+        echo running undo_masking in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/paste_old_sequence_into_remaining_gaps.py \
+            ${GENOME_AFTER_CLOSING} \
+            ${GAPS_BEFORE_CLOSING} \
+            ${GAPS_AFTER_CLOSING} \
+            ${MASKED_SEQUENCES} \
+            > ${OUT_FOLDER}/masking_undone.fasta
+
+        
+        python3 ${SCRIPTS_DIR}/annotate_closed_gaps.py \
+                ${GAPS_BEFORE_CLOSING} \
+                ${OUT_FOLDER}/masking_undone.fasta \
+                ${GAPS_BEFORE_CLOSING} \
+            > ${OUT_FOLDER}/gaps.gff3
+
+        echo "OK" > ${OUT_FOLDER}/undo_masking.done
+    fi
+}
+
+# Output:
+# ${OUT_FOLDER}/annotation_combined.gff
+transfer_fixed_regions(){
+    OUT_FOLDER=$1
+    GFF_FILES_IN=$2
+    BASE_ANNOTATION_IN=$3
+    ASSEMBLY_TRANSFER=$4
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/transfer_fixed_regions.done ]; then
+        echo running transfer_fixed_regions in ${OUT_FOLDER}
+
+        cp ${BASE_ANNOTATION_IN} ${OUT_FOLDER}/annotation_combined.gff
+
+        while read line
+        do
+            arrIN=(${line//;/ })
+            FEATURE_NAME=${arrIN[0]}
+            GFF_FILE=${arrIN[1]}/gaps.gff
+            ASSEMBLY_IN=${arrIN[1]}/masking_undone.fasta
+
+            grep "filledgap" ${GFF_FILE} | awk '{$2='${FEATURE_NAME}';print}' > ${OUT_FOLDER}/${FEATURE_NAME}.gff
+            
+            python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+                    ${ASSEMBLY_IN} \
+                    ${ASSEMBLY_TRANSFER} \
+                    ${GFF_FILE} \
+                    ${OUT_FOLDER}/${FEATURE_NAME}.failed.gff \
+                > ${OUT_FOLDER}/${FEATURE_NAME}.transfered.gff
+
+            grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME}.transfered.gff >> ${OUT_FOLDER}/annotation_combined.gff
+
+        done < <(tr ' ' '\n' < ${GFF_FILES_IN})
+
+        echo "OK" > ${OUT_FOLDER}/transfer_fixed_regions.done
     fi
 }
 
