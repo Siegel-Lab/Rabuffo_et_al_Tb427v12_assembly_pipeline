@@ -35,7 +35,7 @@ def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_no
                 if line[0] == "#":
                     continue
                 ctg, a, b, start, end, *extra = line.strip().split("\t")
-                if ctg in old_contigs:
+                if ctg in old_contigs and ctg in new_contigs:
                     seq = old_contigs[ctg][int(start):int(end)]
                     if seq in new_contigs[ctg]:
                         new_start = new_contigs[ctg].index(seq)
