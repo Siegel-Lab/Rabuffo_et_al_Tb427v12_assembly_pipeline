@@ -23,6 +23,22 @@ def load_contigs(fasta_in):
         contigs[contig_name] = contig
     return contigs
 
+def nth_index(haystack, needle, n):
+    start = haystack.find(needle)
+    while start >= 0 and n > 1:
+        start = haystack.find(needle, start+1)
+        n -= 1
+    return start
+
+def get_n(haystack, needle, start):
+    n = 0
+    last_start = 0
+    while haystack.find(needle, start) != start:
+        n += 1
+        start = haystack.find(needle, start) + len(needle)
+
+    return n
+
 def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_not_found):
     old_contigs = load_contigs(old_genome)
     new_contigs = load_contigs(new_genome)
@@ -38,10 +54,10 @@ def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_no
                 if ctg in old_contigs and ctg in new_contigs:
                     seq = old_contigs[ctg][int(start):int(end)]
                     if seq in new_contigs[ctg]:
-                        new_start = new_contigs[ctg].index(seq)
-                        if seq in new_contigs[ctg][new_start + len(seq):]:
-                            out_file.write("multiple_matches:\t" + line)
+                        if new_contigs[ctg].count(seq) != old_contigs[ctg].count(seq):
+                            out_file.write("different_number_of_occurrences:\t" + line)
                         else:
+                            new_start = nth_index(new_contigs[ctg], seq, get_n(old_contigs[ctg], seq, int(start)))
                             print(ctg, a, b, new_start + 1, new_start + len(seq) + 1, *extra, sep="\t")
                     else:
                         out_file.write("no_match:\t" + line)
