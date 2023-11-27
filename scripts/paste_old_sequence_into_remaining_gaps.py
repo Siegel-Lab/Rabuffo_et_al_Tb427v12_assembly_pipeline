@@ -25,7 +25,7 @@ def load_masked(fasta_in):
     return ret
 
 
-def mask_regions(genome_in, old_gff_in, gff_in, masked_in):
+def paste_old_sequences(genome_in, old_gff_in, gff_in, masked_in):
     masked = load_masked(masked_in)
     to_undo = {}
     old_gff = {}
@@ -62,10 +62,13 @@ def mask_regions(genome_in, old_gff_in, gff_in, masked_in):
                 key = contig_name + " " + str(start) + " " + str(end)
                 if key in masked:
                     paste_sequence = masked[contig_name + " " + str(start) + " " + str(end)]
+                    # print("pasting a", len(paste_sequence), "bp sequence into", contig_name, "at", start, "-", end, 
+                    #       file=sys.stderr)
+                    # print("replaced sequence:", contig[start:end], file=sys.stderr)
                     contig = contig[:start] + paste_sequence + contig[end:]
         print(">" + contig_name)
         for i in range(0, len(contig), 80):
             print(contig[i:i+80])
 
 if __name__ == "__main__":
-    mask_regions(*sys.argv[1:])
+    paste_old_sequences(*sys.argv[1:])

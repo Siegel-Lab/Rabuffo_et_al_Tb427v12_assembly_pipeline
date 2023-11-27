@@ -77,18 +77,21 @@ def annotate_closed_gaps(old_genome, new_genome, old_gaps, overhang=1000, gap_si
                     # print(contig_name)
                     # print(curr_assignment)
                     # print(jdx)
-                    # print(len(old_scaffolds))
-                    # print(len(new_scaffolds))
-                    # print(len(old_scaffold))
-                    # print(old_scaffold)
+                    print(len(old_scaffolds), file=sys.stderr)
+                    print(len(new_scaffolds), file=sys.stderr)
+                    print(len(old_scaffold), file=sys.stderr)
+                    # print(old_scaffold, file=sys.stderr)
                     # print(old_scaffold_rev_comp)
                     assert False
+                    scaffold_assignment.append(None)
                 else:
                     scaffold_assignment.append(curr_assignment[0])
             assert all(None in [a, b] or a <= b for a, b in zip(scaffold_assignment[:-1], scaffold_assignment[1:]))
 
             for (old_sc_a, new_sc_a), (old_sc_b, new_sc_b) in zip(enumerate(scaffold_assignment[:-1]), 
                                                                   enumerate(scaffold_assignment[1:])):
+                if None in [new_sc_a, new_sc_b]:
+                    continue
                 idx = "ID=?"
                 old_prev_scaf_len = sum(len(s) + gap_size for s in old_scaffolds[:old_sc_a])
                 old_idx_a = old_prev_scaf_len + len(old_scaffolds[old_sc_a])

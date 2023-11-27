@@ -58,6 +58,9 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
             if name in contigs:
                 start = min(start, contigs[name][0])
                 end = max(end, contigs[name][1])
+                if contigs[name][2] != contig:
+                    print("WARNING: contig ", name, "is annotated to both alleles of the fully phased reference",
+                        file=sys.stderr)
             contigs[name] = [start, end, contig]
 
     for name, (start, end, contig) in contigs.items():
@@ -65,12 +68,12 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
         end_gap = None
         if contig in old_gaps_by_contig and contig in new_gap_by_id:
             for idx, gap in enumerate(old_gaps_by_contig[contig]):
-                if "_core_" in name or "_5A_" in name or "_5B_" in name:
+                if "_core_" in name or "_3A_" in name or "_3B_" in name:
                     if gap[1] + 1 == start:
                         assert start_gap is None
                         start_gap = idx
 
-                if "_core_" in name or "_3A_" in name or "_3B_" in name:
+                if "_core_" in name or "_5A_" in name or "_5B_" in name:
                     if end + 1 == gap[0]:
                         assert end_gap is None
                         end_gap = idx
@@ -86,12 +89,18 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
                     end = new_gap_by_id[contig][end_gap][0] - 1
                 else:
                     end = new_gap_by_id[contig][end_gap][1]
-            if "_5A_" in name or "_5B_" in name:
+
+            if "_3A_" in name or "_3B_" in name \
+                or ("_core_Tb427v10_A" in name and name.replace("_core_Tb427v10_A", "_3A_Tb427v10") not in contigs) \
+                or ("_core_Tb427v10_B" in name and name.replace("_core_Tb427v10_B", "_3B_Tb427v10") not in contigs):
                 end = contig_lengths[contig]
 
             print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", start, end, ".", 
-                  "+" if "Tb427v10_A" in name or "_3A_" in name or "_5A_" in name else "-", 
+                  "+" if "_core_Tb427v10_A" in name or "_3A_" in name or "_5A_" in name else "-", 
                   ".", "Name=" + name, sep="\t")
+        else:
+            print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", 1, contig_lengths[contig], ".", 
+                  "+", ".", "Name=" + name, sep="\t")
 
 
 
