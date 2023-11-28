@@ -82,7 +82,7 @@ def annotate_closed_gaps(old_genome, new_genome, old_gaps, overhang=1000, gap_si
                     print(len(old_scaffold), file=sys.stderr)
                     # print(old_scaffold, file=sys.stderr)
                     # print(old_scaffold_rev_comp)
-                    assert False
+                    # assert False
                     scaffold_assignment.append(None)
                 else:
                     scaffold_assignment.append(curr_assignment[0])

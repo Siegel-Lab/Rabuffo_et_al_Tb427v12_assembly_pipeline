@@ -38,7 +38,8 @@ setup() {
 #
 # @todo section:
 #
-# - in the GFF files the first line of the gap annotations is pasted at the end of the last line of the remaining annotations (a newline is missing somewhere)
+# - remember to ask raul for the final v11 assembly
+# - pick data from anna and what raul sent
 #
 
 
@@ -127,17 +128,17 @@ main(){
                         ${DATA_DIR}/out/8_merged_genomes/assembly.fasta
                         # -> ${DATA_DIR}/out/8.2_transfer_fixed_regions/annotation_combined.gff
 
-    annotate_cores_and_subtelomeric_contigs ${DATA_DIR}/out/8.3_annotate_cores_and_subt \
-            ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
-            ${DATA_DIR}/out/1_remove_gap_annotation/annotation.gapless.gff3 \
-            ${DATA_DIR}/out/8.2_transfer_fixed_regions/annotation_combined.gff \
-            "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" 
-            # -> ${DATA_DIR}/out/8.3_annotate_cores_and_subt/annotation.gff
+    # annotate_cores_and_subtelomeric_contigs ${DATA_DIR}/out/8.3_annotate_cores_and_subt \
+    #         ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
+    #         ${DATA_DIR}/out/1_remove_gap_annotation/annotation.gapless.gff3 \
+    #         ${DATA_DIR}/out/8.2_transfer_fixed_regions/annotation_combined.gff \
+    #         "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" 
+    #         # -> ${DATA_DIR}/out/8.3_annotate_cores_and_subt/annotation.gff
 
-    extract_regions ${DATA_DIR}/out/8.4_extract_haploid_genome \
-                ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
-                ${DATA_DIR}/out/8.3_annotate_cores_and_subt/contig_and_subt.gff
-                # -> ${DATA_DIR}/out/15_masked_repeats/masked.fasta
+    # extract_regions ${DATA_DIR}/out/8.4_extract_haploid_genome \
+    #             ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
+    #             ${DATA_DIR}/out/8.3_annotate_cores_and_subt/contig_and_subt.gff
+    #             # -> ${DATA_DIR}/out/15_masked_repeats/masked.fasta
 
     generate_overview_pic ${DATA_DIR}/out/9_overview_of_remaining_gaps \
                           ${DATA_DIR}/out/8.3_annotate_cores_and_subt/annotation.gff \
@@ -195,6 +196,7 @@ main(){
                 ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta
                 # -> ${DATA_DIR}/out/18.2_reannotated_gaps/gaps.gff3
 
+
     transfer_annotation ${DATA_DIR}/out/19_transfer_annotation \
                         ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
                         ${DATA_DIR}/out/1_remove_gap_annotation/annotation.gapless.gff3 \
@@ -217,17 +219,36 @@ main(){
                         "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region gap" \
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;expanded_region=blue;gap=purple"
 
+    gap_spanning_reads ${DATA_DIR}/out/22_vpr_new_genome \
+                                 ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta \
+                                 ${ONT_READS_IN} \
+                                 ${DATA_DIR}/out/18.2_reannotated_gaps/gaps.gff3
+                                 # -> ${DATA_DIR}/out/22_vpr_new_genome/distance_deviation.tsv
+
+    assembly_gaps_individually ${DATA_DIR}/out/22.1_individually_assembled_gaps \
+            ${DATA_DIR}/out/22_vpr_new_genome/gap_spanning_reads.tsv \
+            ${ONT_READS_IN}
+            # -> ....
+
+
+    annotate_cores_and_subtelomeric_contigs ${DATA_DIR}/out/23_annotate_cores_and_subt \
+            ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
+            ${DATA_DIR}/out/1_remove_gap_annotation/annotation.gapless.gff3 \
+            ${DATA_DIR}/out/20_transfer_fixed_regions/annotation_combined.gff \
+            "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" 
+            # -> ${DATA_DIR}/out/23_annotate_cores_and_subt/annotation.gff
+
+    extract_regions ${DATA_DIR}/out/24_extract_haploid_genome \
+                ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta \
+                ${DATA_DIR}/out/23_annotate_cores_and_subt/contig_and_subt.gff
+                # -> ${DATA_DIR}/out/24_extract_haploid_genome/masked.fasta
+
     # here comes the analysis part !
 
-    exit
-    align_reads_to_genome ${DATA_DIR}/out/22_aligned_reads_on_new_genome \
+    align_reads_to_genome ${DATA_DIR}/out/25_aligned_reads_on_new_genome \
         ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
         ${ONT_READS_IN}
 
-    # virtual_paired_read_distance ${DATA_DIR}/out/10_vpr_new_genome \
-    #                              ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
-    #                              ${ONT_READS_IN}
-    #                              # -> ${DATA_DIR}/out/10_vpr_new_genome/distance_deviation.tsv
 
     # analyze_gaps_closed_correctly ${DATA_DIR}/out/11_analyze_gaps_closed_correctly \
     #                               ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
@@ -949,8 +970,8 @@ undo_masking(){
 
         python3 ${SCRIPTS_DIR}/paste_old_sequence_into_remaining_gaps.py \
             ${GENOME_AFTER_CLOSING} \
-            ${GAPS_AFTER_CLOSING} \
             ${GAPS_BEFORE_CLOSING} \
+            ${GAPS_AFTER_CLOSING} \
             ${MASKED_SEQUENCES} \
             > ${OUT_FOLDER}/masking_undone.fasta
 
@@ -1031,6 +1052,42 @@ annotate_cores_and_subtelomeric_contigs(){
         cat ${OUT_FOLDER}/contig_and_subt.gff >> ${OUT_FOLDER}/annotation.gff
 
         echo "OK" > ${OUT_FOLDER}/annotate_cores_and_subtelomeric_contigs.done
+    fi
+}
+
+
+assembly_gaps_individually(){
+    OUT_FOLDER=$1
+    GAP_SPANNING_READS=$2
+    ONT_READS_IN=$3
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/assembly_gaps_individually.done ]; then
+        echo running assembly_gaps_individually in ${OUT_FOLDER}
+
+        awk '{print $2}' ${GAP_SPANNING_READS} | sort | uniq > ${OUT_FOLDER}/gaps
+
+        for GAP in $(cat ${OUT_FOLDER}/gaps)
+        do
+            mkdir -p ${OUT_FOLDER}/${GAP}
+            awk 'NF==2{print}{}' ${GAP_SPANNING_READS} | grep ${GAP} | awk '{print substr($1, 1, length($1) - 2)}' \
+                > ${OUT_FOLDER}/${GAP}/reads.lst
+
+            if [ -s ${OUT_FOLDER}/${GAP}/reads.lst ]; then
+                ${BIN_DIR}/seqtk/seqtk subseq ${ONT_READS_IN} ${OUT_FOLDER}/${GAP}/reads.lst > ${OUT_FOLDER}/${GAP}/reads.fasta
+
+                cd ${OUT_FOLDER}/${GAP}
+
+                ${BIN_DIR}/smartdenovo/smartdenovo.pl -c 1 ${OUT_FOLDER}/${GAP}/reads.fasta > wtasm.mak
+                make -f wtasm.mak
+
+                cd ${SCRIPTS_DIR}
+            fi
+
+        done
+
+        # echo "OK" > ${OUT_FOLDER}/assembly_gaps_individually.done
     fi
 }
 

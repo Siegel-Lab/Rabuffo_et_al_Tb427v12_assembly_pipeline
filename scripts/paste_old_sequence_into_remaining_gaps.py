@@ -25,11 +25,11 @@ def load_masked(fasta_in):
     return ret
 
 
-def paste_old_sequences(genome_in, old_gff_in, gff_in, masked_in):
+def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, masked_in):
     masked = load_masked(masked_in)
     to_undo = {}
     old_gff = {}
-    with fileinput.input(old_gff_in) as in_file:
+    with fileinput.input(gaps_before_closing) as in_file:
         for line in in_file:
             if line[0] == "#":
                 continue
@@ -40,7 +40,7 @@ def paste_old_sequences(genome_in, old_gff_in, gff_in, masked_in):
                     old_gff[idx] = (int(start), int(end))
                     break
 
-    with fileinput.input(gff_in) as in_file:
+    with fileinput.input(gaps_after_closing) as in_file:
         for line in in_file:
             if line[0] == "#":
                 continue
@@ -50,22 +50,24 @@ def paste_old_sequences(genome_in, old_gff_in, gff_in, masked_in):
                 if "ID=" in e:
                     idx = int(e.split("=")[1])
             if what == "gap":
-                start, end = old_gff[idx]
+                old_start, old_end = old_gff[idx]
                 if contig not in to_undo:
                     to_undo[contig] = []
-                to_undo[contig].append((start, end))
+                to_undo[contig].append((int(start), int(end), contig + " " + str(old_start) + " " + str(old_end)))
 
     for contig_name, contig in iterate_contigs(genome_in):
         if contig_name in to_undo:
             to_undo[contig_name].sort(reverse=True)
-            for start, end in to_undo[contig_name]:
-                key = contig_name + " " + str(start) + " " + str(end)
+            for start, end, key in to_undo[contig_name]:
                 if key in masked:
-                    paste_sequence = masked[contig_name + " " + str(start) + " " + str(end)]
+                    paste_sequence = masked[key]
                     # print("pasting a", len(paste_sequence), "bp sequence into", contig_name, "at", start, "-", end, 
                     #       file=sys.stderr)
                     # print("replaced sequence:", contig[start:end], file=sys.stderr)
                     contig = contig[:start] + paste_sequence + contig[end:]
+                else:
+                    # print("could not find", contig_name, "at", start, "-", end, "in masked", file=sys.stderr)
+                    pass
         print(">" + contig_name)
         for i in range(0, len(contig), 80):
             print(contig[i:i+80])
