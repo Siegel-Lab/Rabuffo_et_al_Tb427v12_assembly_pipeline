@@ -19,7 +19,7 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
 
 
     contig_lengths = {}
-    new_gap_by_id = {}
+    new_gap_by_contig = {}
     with fileinput.input(new_gaps_in) as in_file:
         for line in in_file:
             if line[0] == "#":
@@ -30,10 +30,10 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
             contig, _, gap_type, start, end, _, _, _, *extra = line.split("\t")
             start=int(start)
             end=int(end)
-            if contig not in new_gap_by_id:
-                new_gap_by_id[contig] = []
-            new_gap_by_id[contig].append([start, end, gap_type])
-    for contig, l in new_gap_by_id.items():
+            if contig not in new_gap_by_contig:
+                new_gap_by_contig[contig] = []
+            new_gap_by_contig[contig].append([start, end, gap_type])
+    for contig, l in new_gap_by_contig.items():
         if len(l) != len(old_gaps_by_contig[contig]):
             print(contig, len(l), len(old_gaps_by_contig[contig]), file=sys.stderr)
             assert False
@@ -66,7 +66,7 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
     for name, (start, end, contig) in contigs.items():
         start_gap = None
         end_gap = None
-        if contig in old_gaps_by_contig and contig in new_gap_by_id:
+        if contig in old_gaps_by_contig and contig in new_gap_by_contig:
             for idx, gap in enumerate(old_gaps_by_contig[contig]):
                 if "_core_" in name or "_3A_" in name or "_3B_" in name:
                     if gap[1] + 1 == start:
@@ -79,16 +79,16 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
                         end_gap = idx
 
             if start_gap is not None:
-                if new_gap_by_id[contig][start_gap][2] == "gap" or "_core_" in name:
-                    start = new_gap_by_id[contig][start_gap][1] + 1
+                if new_gap_by_contig[contig][start_gap][2] == "gap" or "_core_" in name:
+                    start = new_gap_by_contig[contig][start_gap][1] + 1
                 else:
-                    start = new_gap_by_id[contig][start_gap][0]
+                    start = new_gap_by_contig[contig][start_gap][0]
 
             if end_gap is not None:
-                if new_gap_by_id[contig][end_gap][2] == "gap" or "_core_" in name:
-                    end = new_gap_by_id[contig][end_gap][0] - 1
+                if new_gap_by_contig[contig][end_gap][2] == "gap" or "_core_" in name:
+                    end = new_gap_by_contig[contig][end_gap][0] - 1
                 else:
-                    end = new_gap_by_id[contig][end_gap][1]
+                    end = new_gap_by_contig[contig][end_gap][1]
 
             if "_3A_" in name or "_3B_" in name \
                 or ("_core_Tb427v10_A" in name and name.replace("_core_Tb427v10_A", "_3A_Tb427v10") not in contigs) \

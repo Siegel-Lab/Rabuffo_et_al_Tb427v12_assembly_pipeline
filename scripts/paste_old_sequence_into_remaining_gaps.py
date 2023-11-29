@@ -64,7 +64,7 @@ def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, mask
                     # print("pasting a", len(paste_sequence), "bp sequence into", contig_name, "at", start, "-", end, 
                     #       file=sys.stderr)
                     # print("replaced sequence:", contig[start:end], file=sys.stderr)
-                    contig = contig[:start] + paste_sequence + contig[end:]
+                    contig = contig[:start-1] + paste_sequence + contig[end:]
                 else:
                     # print("could not find", contig_name, "at", start, "-", end, "in masked", file=sys.stderr)
                     pass
