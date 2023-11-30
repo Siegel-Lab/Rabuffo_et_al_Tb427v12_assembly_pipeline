@@ -101,7 +101,7 @@ def filter_clusters_with_counter_indication(clusters, data, min_indication=5):
 
     return ret
 
-def filter_clusters_that_overlap_gap(clusters, gap_pos, min_distance_to_gap=10000):
+def filter_clusters_that_overlap_gap(clusters, gap_pos, min_distance_to_gap=1000):
     # filter out clusters that overlap with gaps
     cluster_overlapping_gap = []
     new_cluster = []
@@ -162,13 +162,15 @@ def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gf
     clusters = cluster(data)
     clusters = filter_clusters_with_counter_indication(clusters, data)
     if filter_overlap:
-        kept_clusters, filtered_clusters = filter_clusters_that_overlap_gap(clusters, gap_pos)
+        kept_clusters, filtered_clusters = filter_clusters_that_overlap_gap(clusters, gap_pos, 
+                                                                            min_distance_to_gap=cut_back_distance*3)
         # print("clusters overlapping gaps")
         # for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in filtered_clusters:
         #     print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")
         # print()
     elif filter_non_overlap:
-        filtered_clusters, kept_clusters = filter_clusters_that_overlap_gap(clusters, gap_pos)
+        filtered_clusters, kept_clusters = filter_clusters_that_overlap_gap(clusters, gap_pos, 
+                                                                            min_distance_to_gap=cut_back_distance*3)
         # print("clusters not overlapping gaps")
         # for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in filtered_clusters:
         #     print(cluster_chr, int(cluster_start/1000), "-", int(cluster_end/1000), "k")

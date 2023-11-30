@@ -38,6 +38,8 @@ setup() {
 #
 # @todo section:
 #
+# - check for reads that connect different contigs
+#
 # - remember to ask raul for the final v11 assembly
 # - pick data from anna and what raul sent
 #
@@ -129,7 +131,7 @@ main(){
     generate_overview_pic ${DATA_DIR}/out/9_overview_of_remaining_gaps \
                           ${DATA_DIR}/out/8.2_transfer_fixed_regions/annotation_combined.gff \
                           "gene closedgap_full closedgap_a closedgap_b gap" \
-                          "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;gap=purple" \
+                          "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;gap=purple"
 
     gap_spanning_reads ${DATA_DIR}/out/10_gap_spanning_reads \
                     ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
@@ -137,17 +139,30 @@ main(){
                     ${DATA_DIR}/out/8_merged_genomes/gaps.gff3
                     # -> ${DATA_DIR}/out/10_gap_spanning_reads/distance_deviation.tsv
 
+
+    mask_region ${DATA_DIR}/out/10.1_test_masked_repeats \
+                ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
+                ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+                # -> ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta
+                
+    gap_spanning_reads ${DATA_DIR}/out/10.2_test_gap_spanning_reads \
+                    ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta \
+                    ${ONT_READS_IN} \
+                    ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+
+    exit
+
     identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
         ${DATA_DIR}/out/10_gap_spanning_reads/distance_deviation.tsv \
-        ${DATA_DIR}/out/8.2_transfer_fixed_regions/combined.transfered.gff \
-        ${DATA_DIR}/out/8.1_transfer_annotation/annotation_combined.gff
+        "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" \
+        ${DATA_DIR}/out/8.2_transfer_fixed_regions/annotation_combined.gff
         # -> ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff
         # -> ${DATA_DIR}/out/13_identify_collapsed_regions/collapsed_regions.gff
 
     generate_overview_pic ${DATA_DIR}/out/14_overview_collapsed_repeats \
                           ${DATA_DIR}/out/13_identify_collapsed_regions/annotation.gff \
-                          "gene misassembly gap" \
-                          "gene=lightgrey;misassembly=pink;gap=purple"
+                          "gene misassembly closedgap_full closedgap_a closedgap_b gap" \
+                          "gene=lightgrey;misassembly=pink;closedgap_full=green;closedgap_a=green;closedgap_b=green;gap=purple"
 
     mask_region ${DATA_DIR}/out/15_masked_repeats \
                 ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
@@ -398,6 +413,8 @@ virtual_paired_read_distance(){
         # compute distances
         python3 ${SCRIPTS_DIR}/get_read_pos_and_strand.py ${OUT_FOLDER}/reads.filtered.sam ${OUT_FOLDER}/mates.filtered.sam ${VPR_LEN} > ${OUT_FOLDER}/read_pos_and_strnd.tsv
 
+        python3 ${SCRIPTS_DIR}/contig_connecting_reads.py ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/mates.sam ${VPR_LEN} > ${OUT_FOLDER}/contig_connecting_reads.tsv
+
         echo "OK" > ${OUT_FOLDER}/virtual_paired_read_distance.done
     fi
 }
@@ -614,15 +631,17 @@ transfer_annotation(){
     if [ ! -e ${OUT_FOLDER}/transfer_annotation.done ]; then
         echo running transfer_annotation in ${OUT_FOLDER}
 
-        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
-                ${ASSEMBLY_IN} \
-                ${ASSEMBLY_TRANSFER} \
-                ${GFF_IN} \
-                ${OUT_FOLDER}/annotation.failed.gff \
-            > ${OUT_FOLDER}/annotation.transfered.gff
+        # python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+        #         ${ASSEMBLY_IN} \
+        #         ${ASSEMBLY_TRANSFER} \
+        #         ${GFF_IN} \
+        #         ${OUT_FOLDER}/annotation.failed.gff \
+        #     > ${OUT_FOLDER}/annotation.transfered.gff
 
         echo "failed to transfer this many annotations:"
         wc -l ${OUT_FOLDER}/annotation.failed.gff
+        echo ""
+        
         if [ ! -z "$GFF_TRANSFER" ]
         then
             grep -v "#" ${GFF_TRANSFER} > ${OUT_FOLDER}/gff_transfer.no#.gff
@@ -713,7 +732,7 @@ analyze_gaps_closed_correctly(){
 identify_collapsed_regions(){
     OUT_FOLDER=$1
     DIST_DEV_FILE=$2
-    GAPS_IN=$3
+    GAP_PATTERN_IN=$3
     GFF_IN=$4
 
     mkdir -p ${OUT_FOLDER}
@@ -721,10 +740,11 @@ identify_collapsed_regions(){
     if [ ! -e ${OUT_FOLDER}/identify_collapsed_regions.done ]; then
         echo running identify_collapsed_regions in ${OUT_FOLDER}
 
+        grep ${GAP_PATTERN_IN} ${GFF_IN} > ${OUT_FOLDER}/gaps.gff
 
         python3 ${SCRIPTS_DIR}/identify_collapsed_regions.py \
                 ${DIST_DEV_FILE} \
-                ${GAPS_IN} \
+                ${OUT_FOLDER}/gaps.gff \
                 ${OUT_FOLDER}/collapsed_regions.gff
 
 
@@ -1005,6 +1025,10 @@ transfer_fixed_regions(){
                     ${OUT_FOLDER}/${FEATURE_NAME}.gff \
                     ${OUT_FOLDER}/${FEATURE_NAME}.failed.gff \
                 > ${OUT_FOLDER}/${FEATURE_NAME}.transfered.gff
+
+            echo "failed to transfer this many ${FEATURE_NAME}:"
+            wc -l ${OUT_FOLDER}/${FEATURE_NAME}.failed.gff
+            echo ""
 
             grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME}.transfered.gff >> ${OUT_FOLDER}/annotation_combined.gff
             grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME}.transfered.gff >> ${OUT_FOLDER}/combined.transfered.gff

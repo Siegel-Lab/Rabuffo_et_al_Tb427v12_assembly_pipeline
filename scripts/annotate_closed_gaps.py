@@ -69,29 +69,45 @@ def annotate_closed_gaps(old_genome, new_genome, old_gaps, overhang=1000, gap_si
                 for idx, new_scaffold in enumerate(new_scaffolds):
                     if cropped_scaffold in new_scaffold:
                         curr_assignment.append(idx)
-                    if old_scaffold_rev_comp in new_scaffold:
+                    elif old_scaffold_rev_comp in new_scaffold:
                         curr_assignment.append(idx)
                 if not len(curr_assignment) == 1:
-                    print("ERROR: could not find assignment for:", contig_name, "scaffold", jdx, len(curr_assignment),
-                          file=sys.stderr)
+                    print("WARNING: could not find assignment for:", contig_name, "scaffold", jdx, curr_assignment,
+                        file=sys.stderr)
+                    # if len(scaffold_assignment) > 0:
+                    #     print("last assignment:", scaffold_assignment[-1], file=sys.stderr)
                     # print(contig_name)
                     # print(curr_assignment)
                     # print(jdx)
-                    print(len(old_scaffolds), file=sys.stderr)
-                    print(len(new_scaffolds), file=sys.stderr)
-                    print(len(old_scaffold), file=sys.stderr)
+                    # print(len(old_scaffolds), file=sys.stderr)
+                    # print(len(new_scaffolds), file=sys.stderr)
+                    # print(len(old_scaffold), file=sys.stderr)
                     # print(old_scaffold, file=sys.stderr)
                     # print(old_scaffold_rev_comp)
                     # assert False
                     scaffold_assignment.append(None)
                 else:
                     scaffold_assignment.append(curr_assignment[0])
-            assert all(None in [a, b] or a <= b for a, b in zip(scaffold_assignment[:-1], scaffold_assignment[1:]))
+
+            # # try to fix none assignments based on context
+            # for a, (b_idx, b), c in zip(scaffold_assignment[:-2], list(enumerate(scaffold_assignment))[1:-1], scaffold_assignment[2:]):
+            #     if b is None:
+            #         seq = old_scaffolds[b_idx][overhang:-overhang]
+            #         if a == c and seq in new_scaffolds[a] or rev_comp(seq) in new_scaffolds[a]:
+            #             scaffold_assignment[b_idx] = a
+            #         elif a + 2 == c and seq in new_scaffolds[a + 1] or rev_comp(seq) in new_scaffolds[a + 1]:
+            #             scaffold_assignment[b_idx] = a + 1
+            #         elif a + 1 == c and (seq in new_scaffolds[a] or rev_comp(seq) in new_scaffolds[a]) and not seq in new_scaffolds[c] and not rev_comp(seq) in new_scaffolds[c]:
+            #             scaffold_assignment[b_idx] = a
+            #         elif a + 1 == c and (seq in new_scaffolds[c] or rev_comp(seq) in new_scaffolds[c]) and not seq in new_scaffolds[a] and not rev_comp(seq) in new_scaffolds[a]:
+            #             scaffold_assignment[b_idx] = a + 1
+
+            # print(contig_name, "contig assignments", scaffold_assignment, file=sys.stderr)
+
+            assert all(not None in [a, b] or a <= b for a, b in zip(scaffold_assignment[:-1], scaffold_assignment[1:]))
 
             for (old_sc_a, new_sc_a), (old_sc_b, new_sc_b) in zip(enumerate(scaffold_assignment[:-1]), 
                                                                   enumerate(scaffold_assignment[1:])):
-                if None in [new_sc_a, new_sc_b]:
-                    continue
                 idx = "ID=?"
                 old_prev_scaf_len = sum(len(s) + gap_size for s in old_scaffolds[:old_sc_a])
                 old_idx_a = old_prev_scaf_len + len(old_scaffolds[old_sc_a])
@@ -102,15 +118,31 @@ def annotate_closed_gaps(old_genome, new_genome, old_gaps, overhang=1000, gap_si
                         break
                 if new_sc_a == new_sc_b:
                     cropped_scaffold_a = old_scaffolds[old_sc_a][overhang:-overhang]
+                    idx_a = 0
+                    if cropped_scaffold_a in new_scaffolds[new_sc_a]:
+                        idx_a = new_scaffolds[new_sc_a].index(cropped_scaffold_a)
+                    else:
+                        assert rev_comp(cropped_scaffold_a) in new_scaffolds[new_sc_a]
+                        idx_a = new_scaffolds[new_sc_a].index(rev_comp(cropped_scaffold_a))
+                        
                     cropped_scaffold_b = old_scaffolds[old_sc_b + 1][overhang:-overhang]
+                    idx_b = 0
+                    if cropped_scaffold_b in new_scaffolds[new_sc_a]:
+                        idx_b = new_scaffolds[new_sc_a].index(cropped_scaffold_b)
+                    else:
+                        assert rev_comp(cropped_scaffold_b) in new_scaffolds[new_sc_a]
+                        idx_b = new_scaffolds[new_sc_a].index(rev_comp(cropped_scaffold_b))
+
                     prev_scaf_len = sum(len(s) + gap_size for s in new_scaffolds[:new_sc_a])
-                    idx_a = new_scaffolds[new_sc_a].index(cropped_scaffold_a) + len(cropped_scaffold_a) + prev_scaf_len
-                    idx_b = new_scaffolds[new_sc_a].index(cropped_scaffold_b) + prev_scaf_len
+                    idx_a += len(cropped_scaffold_a) + prev_scaf_len
+                    idx_b += prev_scaf_len
+                    assert idx_a < idx_b
                     print(contig_name, ".", "filledgap", idx_a + 1, idx_b, ".", ".", ".", idx, sep="\t")
                 else:
                     prev_scaf_len = sum(len(s) + gap_size for s in new_scaffolds[:new_sc_a])
                     idx_a = prev_scaf_len + len(new_scaffolds[new_sc_a])
                     idx_b = idx_a + gap_size
+                    assert idx_a < idx_b
                     print(contig_name, ".", "gap", idx_a + 1, idx_b, ".", ".", ".", 
                           "estimated_length=1000;gap_type=within scaffold;" + idx, sep="\t")
 
