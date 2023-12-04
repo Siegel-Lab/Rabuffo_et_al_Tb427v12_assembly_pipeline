@@ -237,11 +237,16 @@ main(){
                         "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region closedgap_masked gap" \
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
-    # gap_spanning_reads ${DATA_DIR}/out/22_vpr_new_genome \
-    #                              ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta \
-    #                              ${ONT_READS_IN} \
-    #                              ${DATA_DIR}/out/18.2_reannotated_gaps/gaps.gff3
-    #                              # -> ${DATA_DIR}/out/22_vpr_new_genome/distance_deviation.tsv
+    generate_overview_pic ${DATA_DIR}/out/21.1_overview_of_untransferred_annotations \
+                        ${DATA_DIR}/out/19_transfer_annotation/annotation.failed.gff \
+                        "gene" \
+                        "gene=lightgrey"
+
+    gap_spanning_reads ${DATA_DIR}/out/22_vpr_new_genome \
+                                 ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta \
+                                 ${ONT_READS_IN} \
+                                 ${DATA_DIR}/out/18.2_reannotated_gaps/gaps.gff3
+                                 # -> ${DATA_DIR}/out/22_vpr_new_genome/distance_deviation.tsv
 
     # assembly_gaps_individually ${DATA_DIR}/out/22.1_individually_assembled_gaps \
     #         ${DATA_DIR}/out/22_vpr_new_genome/gap_spanning_reads.tsv \
@@ -269,7 +274,7 @@ main(){
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
     # here comes the analysis part !
-    exit
+
     align_reads_to_genome ${DATA_DIR}/out/26_aligned_reads_on_new_genome \
         ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
         ${ONT_READS_IN}
