@@ -59,6 +59,8 @@ main(){
     #                 ${GFF_IN_XXX}
     #                 # -> ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
 
+    
+
     remove_annotated_gaps ${DATA_DIR}/out/1_remove_gap_annotation \
                           ${GFF_IN_XXX}
                           # -> ${DATA_DIR}/out/1_remove_gap_annotation/annotation.gapless.gff3
@@ -67,6 +69,13 @@ main(){
     annotate_gaps ${DATA_DIR}/out/2_ref_reannotated_gaps \
                   ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
                   # -> ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3
+
+    gap_spanning_reads ${DATA_DIR}/out/2.1_gap_spanning_reads \
+                    ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+                    ${ONT_READS_IN} \
+                    ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3
+                    # -> ${DATA_DIR}/out/2.1_gap_spanning_reads/distance_deviation.tsv
+
 
     # create a picture
     generate_overview_pic ${DATA_DIR}/out/3_overview_of_gaps \
@@ -194,11 +203,6 @@ main(){
             # -> ${DATA_DIR}/out/18_closed_gaps/gaps.gff3
             # -> ${DATA_DIR}/out/18_closed_gaps/assembly.fasta
 
-    # GENOME_AFTER_CLOSING=$2
-    # GAPS_BEFORE_CLOSING=$3
-    # GAPS_AFTER_CLOSING=$4
-    # MASKED_SEQUENCES=$5
-    # GENOME_BEFORE_CLOSING=$6
     undo_masking ${DATA_DIR}/out/18.1_undo_failed_masking \
                 ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
                 ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3 \
@@ -219,7 +223,7 @@ main(){
                         ${DATA_DIR}/out/1_remove_gap_annotation/annotation.gapless.gff3 \
                         ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                         ${DATA_DIR}/out/18.2_reannotated_gaps/gaps.gff3
-                        # -> ${MaC_OUT_FOLDER}/19_transfer_annotation/annotation.transfered.gff
+                        # ->  ${DATA_DIR}/out/19_transfer_annotation/annotation_combined.gff
 
     transfer_fixed_regions ${DATA_DIR}/out/20_transfer_fixed_regions \
                         "filledgap\|filledmasked;closedgap_full;${DATA_DIR}/out/4_close_gaps_full_genome/7.1_undo_failed_masking \
@@ -245,7 +249,7 @@ main(){
     gap_spanning_reads ${DATA_DIR}/out/22_vpr_new_genome \
                                  ${DATA_DIR}/out/18.1_undo_failed_masking/masking_undone.fasta \
                                  ${ONT_READS_IN} \
-                                 ${DATA_DIR}/out/18.2_reannotated_gaps/gaps.gff3
+                                 ${DATA_DIR}/out/20_transfer_fixed_regions/combined.transfered.gff
                                  # -> ${DATA_DIR}/out/22_vpr_new_genome/distance_deviation.tsv
 
     # assembly_gaps_individually ${DATA_DIR}/out/22.1_individually_assembled_gaps \
@@ -275,23 +279,22 @@ main(){
 
     # here comes the analysis part !
 
-    align_reads_to_genome ${DATA_DIR}/out/26_aligned_reads_on_new_genome \
-        ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
-        ${ONT_READS_IN}
+    # align_reads_to_genome ${DATA_DIR}/out/26_aligned_reads_on_new_genome \
+    #     ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+    #     ${ONT_READS_IN}
 
+    analyze_gaps_closed_correctly ${DATA_DIR}/out/27_analyze_gaps_closed_correctly \
+                                  ${DATA_DIR}/out/2.1_gap_spanning_reads/distance_deviation.tsv \
+                                  ${DATA_DIR}/out/22_vpr_new_genome/distance_deviation.tsv \
+                                  ${DATA_DIR}/out/22_vpr_new_genome/gap_spanning_reads.tsv \
+                                  ${DATA_DIR}/out/20_transfer_fixed_regions/combined.transfered.gff \
+                                   ${DATA_DIR}/out/19_transfer_annotation/annotation_combined.gff
+                                  # -> ${DATA_DIR}/out/27_analyze_gaps_closed_correctly/gaps_fixed.gff3
 
-    # analyze_gaps_closed_correctly ${DATA_DIR}/out/11_analyze_gaps_closed_correctly \
-    #                               ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/distance_deviation.tsv \
-    #                               ${DATA_DIR}/out/10_vpr_new_genome/distance_deviation.tsv \
-    #                               ${DATA_DIR}/out/3.1_gap_spanning_reads_old_genome/gap_spanning_reads.tsv \
-    #                               ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
-    #                               ${DATA_DIR}/out/1_move_centro_anno/annotation_combined.gff
-    #                               # -> ${DATA_DIR}/out/11_analyze_gaps_closed_correctly/gaps_fixed.gff3
-
-    # generate_overview_pic ${DATA_DIR}/out/12_overview_of_fixed_gaps \
-    #                       ${DATA_DIR}/out/11_analyze_gaps_closed_correctly/gaps_fixed.gff3 \
-    #                       "gap fixedgap" \
-    #                       "gap=purple;fixedgap=green"
+    generate_overview_pic ${DATA_DIR}/out/28_overview_of_fixed_gaps \
+                          ${DATA_DIR}/out/27_analyze_gaps_closed_correctly/gaps_fixed.gff3 \
+                          "gene no_data gap failed fixed" \
+                          "gene=lightgrey;gap=purple;no_data=blue;failed=red;fixed=green"
 
 }
 
@@ -744,9 +747,7 @@ analyze_gaps_closed_correctly(){
                 ${GAPS_OLD_GENOME} \
             > ${OUT_FOLDER}/gaps_closed_correctly.gff
 
-        grep -v "gap" ${GFF_IN} > ${OUT_FOLDER}/annotation.gapless.gff
-
-        cat ${OUT_FOLDER}/annotation.gapless.gff ${OUT_FOLDER}/gaps_closed_correctly.gff > ${OUT_FOLDER}/gaps_fixed.gff3
+        cat ${GFF_IN} ${OUT_FOLDER}/gaps_closed_correctly.gff > ${OUT_FOLDER}/gaps_fixed.gff3
 
 
         echo "OK" > ${OUT_FOLDER}/analyze_gaps_closed_correctly.done

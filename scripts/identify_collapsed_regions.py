@@ -33,7 +33,7 @@ def load_gaps(file_name):
             contig = contig[:-len("_Tb427v10")]
             
             gap_name = contig + ":" + str(int(start)//1000) + "kbp"
-            gap_pos[gap_name] = [contig, int(start), int(end)]
+            gap_pos[gap_name] = [contig, int(start), int(end), anno_type]
     return gap_pos, contig_sizes
 
 
@@ -107,7 +107,7 @@ def filter_clusters_that_overlap_gap(clusters, gap_pos, min_distance_to_gap=1000
     new_cluster = []
     for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in clusters:
         found_gap = False
-        for gap_name, (gap_chr, gap_start, gap_end) in gap_pos.items():
+        for gap_name, (gap_chr, gap_start, gap_end, _) in gap_pos.items():
             if cluster_chr == gap_chr and cluster_start <= gap_end + min_distance_to_gap and cluster_end + min_distance_to_gap >= gap_start:
                 cluster_overlapping_gap.append([cluster_chr, cluster_start, cluster_end, cluster_deviation, c])
                 found_gap = True

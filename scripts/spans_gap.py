@@ -9,10 +9,10 @@ def check_spans_gap(reads_in, mates_in, gff_file):
                 continue
             if len(line.strip().split()) >= 5:
                 contig_name, _, anno_type, gap_start, gap_end, *_ = line.strip().split()
-                if anno_type == "gap":
-                    if not contig_name in gaps:
-                        gaps[contig_name] = []
-                    gaps[contig_name].append((int(gap_start), int(gap_end)))
+                # if anno_type == "gap":
+                if not contig_name in gaps:
+                    gaps[contig_name] = []
+                gaps[contig_name].append((int(gap_start), int(gap_end)))
 
     for contig_name in gaps.keys():
         gaps[contig_name].sort()

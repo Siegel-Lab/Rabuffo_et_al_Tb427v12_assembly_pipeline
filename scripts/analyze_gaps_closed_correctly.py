@@ -8,10 +8,11 @@ def load_gap_spanning_reads(gap_spanning_reads_file):
     with open(gap_spanning_reads_file, "r") as file_in:
         for line in file_in:
             readname, *gaps = line[:-1].strip().split()
+            readname = readname.split("_")[0]
             gap_names = []
             for gap in gaps:
                 chrom, start, _ = re.split(":|-", gap)
-                #chrom = chrom[:-len("_Tb427v10")]
+                # chrom = chrom[:-len("_Tb427v10")]
                 gap_name = chrom + ":" + str(int(start)//1000) + "kbp"
                 gap_names.append(gap_name)
             gap_spanning_reads[readname] = " ".join(gap_names)
@@ -42,12 +43,12 @@ def filter_clusters(clusters):
 def get_mean_deviation_in_clusters(clusters, ref_dict, fixed_dict, in_fixed=True):
     return [sum([fixed_dict[n] if in_fixed else ref_dict[n] for n in cluster]) / len(cluster) for cluster in clusters]
 
-def make_read_dicts(x_names, x_dev):
-    x_dict = {x: y[0] for x, y in zip(x_names, x_dev)}
+def make_read_dicts(x_names, x_dev, min_map_q):
+    x_dict = {x: y[0] for x, y in zip(x_names, x_dev) if y[-1] >= min_map_q}
 
     return x_dict
 
-def filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict):
+def filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict, fixed_dict):
     # filter reads
     # remove those where the disrance has not changed
     filtered = set()
@@ -57,51 +58,54 @@ def filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict):
             # if read_name in ref_dict and ref_dict[read_name] == distance:
             #     filtered.add(read_name)
         pass
-    readnames = [n for n in fixed_names if n in ref_dict and not n in filtered]
+    readnames = [n for n in fixed_names if n in ref_dict and n in fixed_dict and not n in filtered]
     return readnames
 
 
 
 
-def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_spanning_reads_file, gaps_old_genome, 
+def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_spanning_reads_file, gaps_new_genome, 
                                   gap_closed_if_fixed_dev_smaller_than=5000, 
-                                  max_ref_fixed_diff = 10, max_ref_fixed_sum = 1000):
+                                  max_ref_fixed_diff = 10, max_ref_fixed_sum = 1000, min_map_q=30):
     ref_names, ref_dev = load_dist_dev(dist_dev_ref_file)
     fixed_names, fixed_dev = load_dist_dev(dist_dev_fixed_file)
     gap_spanning_reads = load_gap_spanning_reads(gap_spanning_reads_file)
+    # print(gap_spanning_reads, file=sys.stderr)
 
-    ref_dict = make_read_dicts(ref_names, ref_dev)
-    fixed_dict = make_read_dicts(fixed_names, fixed_dev)
+    ref_dict = make_read_dicts(ref_names, ref_dev, min_map_q)
+    fixed_dict = make_read_dicts(fixed_names, fixed_dev, min_map_q)
 
-    readnames = filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict)
+    readnames = filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict, fixed_dict)
+    # print(readnames, file=sys.stderr)
 
-    gap_pos_old_genome = load_gaps(gaps_old_genome)
+    gap_pos_new_genome, _ = load_gaps(gaps_new_genome)
 
-    gap_names = gap_pos_old_genome.keys()
+    gap_names = gap_pos_new_genome.keys()
+    # print(gap_names, file=sys.stderr)
 
     for gap in sorted(gap_names):
         read_names = extract_reads_for_gap(gap, gap_spanning_reads, readnames)
-        chrom, start, end = gap_pos_old_genome[gap]
-        if len(read_names) > 0:
-            read_clusters = filter_clusters(cluster_reads(read_names, ref_dict, fixed_dict,
-                                                          max_ref_fixed_diff=max_ref_fixed_diff, 
-                                                            max_ref_fixed_sum=max_ref_fixed_sum))
-            cluster_fixed = get_mean_deviation_in_clusters(read_clusters, ref_dict, fixed_dict)
-            gap_closed = False
-            min_fixed = float("inf")
-            for x in cluster_fixed:
-                if abs(x) < gap_closed_if_fixed_dev_smaller_than and abs(x) < min_fixed:
-                    gap_closed = True
-                    min_fixed = abs(x)
-            if gap_closed:
-                print(chrom + "_Tb427v10", ".", "fixedgap", str(start), str(end), ".", ".", ".", 
-                      "estimated_length=1000;gap_type=within scaffold;closed_correctly=true", sep="\t")
-            else:
-                print(chrom + "_Tb427v10", ".", "gap", str(start), str(end), ".", ".", ".", 
-                      "estimated_length=1000;gap_type=within scaffold;not_enough_data=true", sep="\t")
+        chrom, start, end, gap_type = gap_pos_new_genome[gap]
+        if gap_type == "gap":
+            print(chrom + "_Tb427v10", ".", "gap", str(start), str(end), ".", ".", ".", sep="\t")
         else:
-            print(chrom + "_Tb427v10", ".", "gap", str(start), str(end), ".", ".", ".", 
-                  "estimated_length=1000;gap_type=within scaffold;not_enough_data=true", sep="\t")
+            if len(read_names) > 0:
+                read_clusters = filter_clusters(cluster_reads(read_names, ref_dict, fixed_dict,
+                                                            max_ref_fixed_diff=max_ref_fixed_diff, 
+                                                                max_ref_fixed_sum=max_ref_fixed_sum))
+                cluster_fixed = get_mean_deviation_in_clusters(read_clusters, ref_dict, fixed_dict)
+                gap_closed = False
+                min_fixed = float("inf")
+                for x in cluster_fixed:
+                    if abs(x) < gap_closed_if_fixed_dev_smaller_than and abs(x) < min_fixed:
+                        gap_closed = True
+                        min_fixed = abs(x)
+                if gap_closed:
+                    print(chrom + "_Tb427v10", ".", "fixed", str(start), str(end), ".", ".", ".", sep="\t")
+                else:
+                    print(chrom + "_Tb427v10", ".", "failed", str(start), str(end), ".", ".", ".", sep="\t")
+            else:
+                print(chrom + "_Tb427v10", ".", "no_data", str(start), str(end), ".", ".", ".", sep="\t")
 
 
 if __name__ == "__main__":

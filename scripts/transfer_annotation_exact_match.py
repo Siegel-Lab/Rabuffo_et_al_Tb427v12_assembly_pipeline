@@ -48,7 +48,7 @@ def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_no
     with open(annos_not_found, "w") as out_file:
         out_file.write("##gff-version 3\n")
         for name, seq in old_contigs.items():
-            out_file.write(" ".join("##sequence-region", name, "1", len(seq)) + "\n")
+            out_file.write(" ".join(["##sequence-region", name, "1", str(len(seq))]) + "\n")
         with fileinput.input(annotation) as in_file:
             for line in in_file:
                 if line[0] == "#":
@@ -58,29 +58,29 @@ def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_no
                     seq = old_contigs[ctg][int(start):int(end)]
                     if seq in new_contigs[ctg]:
                         if new_contigs[ctg].count(seq) != old_contigs[ctg].count(seq):
-                            while len(extra) < 4:
+                            while len(extra) <= 3:
                                 extra.append("")
-                            if extra[4] != "":
-                                extra[4] += ";"
-                            extra[4] += "cannot_transfer_reason=different_number_of_occurrences"
-                            out_file.write("\t".join(ctg, a, b, start, end, *extra) + "\n")
+                            if extra[3] != "":
+                                extra[3] += ";"
+                            extra[3] += "cannot_transfer_reason=different_number_of_occurrences"
+                            out_file.write("\t".join([ctg, a, b, start, end, *extra]) + "\n")
                         else:
                             new_start = nth_index(new_contigs[ctg], seq, get_n(old_contigs[ctg], seq, int(start)))
                             print(ctg, a, b, new_start + 1, new_start + len(seq) + 1, *extra, sep="\t")
                     else:
-                        while len(extra) < 4:
+                        while len(extra) <= 3:
                             extra.append("")
-                        if extra[4] != "":
-                            extra[4] += ";"
-                        extra[4] += "cannot_transfer_reason=no_match"
-                        out_file.write("\t".join(ctg, a, b, start, end, *extra) + "\n")
+                        if extra[3] != "":
+                            extra[3] += ";"
+                        extra[3] += "cannot_transfer_reason=no_match"
+                        out_file.write("\t".join([ctg, a, b, start, end, *extra]) + "\n")
                 else:
-                    while len(extra) < 4:
+                    while len(extra) <= 3:
                         extra.append("")
-                    if extra[4] != "":
-                        extra[4] += ";"
-                    extra[4] += "cannot_transfer_reason=contig_not_found"
-                    out_file.write("\t".join(ctg, a, b, start, end, *extra) + "\n")
+                    if extra[3] != "":
+                        extra[3] += ";"
+                    extra[3] += "cannot_transfer_reason=contig_not_found"
+                    out_file.write("\t".join([ctg, a, b, start, end, *extra]) + "\n")
 
 
 
