@@ -150,24 +150,25 @@ main(){
                     # -> ${DATA_DIR}/out/10_gap_spanning_reads/distance_deviation.tsv
 
 
-    # mask_region ${DATA_DIR}/out/10.1_test_masked_repeats \
-    #             ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
-    #             ${DATA_DIR}/in/mask_repeats/manual_mask.gff
-    #             # -> ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta
+    mask_region ${DATA_DIR}/out/10.1_test_masked_repeats \
+                ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
+                ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+                # -> ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta
+    cat ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta ${DATA_DIR}/out/10.1_test_masked_repeats/removed_sequences.fasta > ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta
                 
-    # gap_spanning_reads ${DATA_DIR}/out/10.2_test_gap_spanning_reads \
-    #                 ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
-    #                 ${ONT_READS_IN} \
-    #                 ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+    gap_spanning_reads ${DATA_DIR}/out/10.2_test_gap_spanning_reads \
+                    ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
+                    ${ONT_READS_IN} \
+                    ${DATA_DIR}/in/mask_repeats/manual_mask.gff
 
-    # annotate_gaps ${DATA_DIR}/out/10.3_test_annotate_gaps \
-    #             ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta
-    #             # -> ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3
+    annotate_gaps ${DATA_DIR}/out/10.3_test_annotate_gaps \
+                ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta
+                # -> ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3
 
-    # align_reads_to_genome ${DATA_DIR}/out/10.4_test_align_reads \
-    #     ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
-    #     ${ONT_READS_IN}
-
+    align_reads_to_genome ${DATA_DIR}/out/10.4_test_align_reads \
+        ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
+        ${ONT_READS_IN}
+    exit
 
     identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
         ${DATA_DIR}/out/10_gap_spanning_reads/distance_deviation.tsv \
@@ -252,11 +253,6 @@ main(){
                                  ${DATA_DIR}/out/20_transfer_fixed_regions/combined.transfered.gff
                                  # -> ${DATA_DIR}/out/22_vpr_new_genome/distance_deviation.tsv
 
-    # assembly_gaps_individually ${DATA_DIR}/out/22.1_individually_assembled_gaps \
-    #         ${DATA_DIR}/out/22_vpr_new_genome/gap_spanning_reads.tsv \
-    #         ${ONT_READS_IN}
-    #         # -> ....
-
 
     annotate_cores_and_subtelomeric_contigs ${DATA_DIR}/out/23_annotate_cores_and_subt \
             ${DATA_DIR}/out/2_ref_reannotated_gaps/gaps.gff3 \
@@ -279,9 +275,9 @@ main(){
 
     # here comes the analysis part !
 
-    # align_reads_to_genome ${DATA_DIR}/out/26_aligned_reads_on_new_genome \
-    #     ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
-    #     ${ONT_READS_IN}
+    align_reads_to_genome ${DATA_DIR}/out/26_aligned_reads_on_new_genome \
+        ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+        ${ONT_READS_IN}
 
     analyze_gaps_closed_correctly ${DATA_DIR}/out/27_analyze_gaps_closed_correctly \
                                   ${DATA_DIR}/out/2.1_gap_spanning_reads/distance_deviation.tsv \
@@ -391,11 +387,6 @@ mask_and_close(){
                         ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation_combined.gff \
                         "gene filledgap gap" \
                         "gene=lightgrey;filledgap=green;gap=purple"
-
-    # align_reads_to_genome ${MaC_OUT_FOLDER}/10_aligned_reads \
-    #     ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta \
-    #     ${MaC_READS_IN}
-
 
 
 }
