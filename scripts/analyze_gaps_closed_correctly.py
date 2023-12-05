@@ -37,8 +37,8 @@ def cluster_reads(readnames, ref_dict, fixed_dict, max_ref_fixed_diff, max_ref_f
     return [c for l in cluster(readnames, lambda x: ref_dict[x] - fixed_dict[x], max_ref_fixed_diff) 
                for c in cluster(l, lambda x: ref_dict[x] + fixed_dict[x], max_ref_fixed_sum)]
 
-def filter_clusters(clusters):
-    return [c for c in clusters if len(c) > 3]
+def filter_clusters(clusters, min_reads):
+    return [c for c in clusters if len(c) > min_reads]
 
 def get_mean_deviation_in_clusters(clusters, ref_dict, fixed_dict, in_fixed=True):
     return [sum([fixed_dict[n] if in_fixed else ref_dict[n] for n in cluster]) / len(cluster) for cluster in clusters]
@@ -66,7 +66,8 @@ def filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict, fixed_dic
 
 def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_spanning_reads_file, gaps_new_genome, 
                                   gap_closed_if_fixed_dev_smaller_than=5000, 
-                                  max_ref_fixed_diff = 10, max_ref_fixed_sum = 1000, min_map_q=30):
+                                  max_ref_fixed_diff = 10, max_ref_fixed_sum = 1000, min_map_q=30,
+                                  min_reads_in_cluster=5):
     ref_names, ref_dev = load_dist_dev(dist_dev_ref_file)
     fixed_names, fixed_dev = load_dist_dev(dist_dev_fixed_file)
     gap_spanning_reads = load_gap_spanning_reads(gap_spanning_reads_file)
@@ -89,10 +90,11 @@ def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_sp
         if gap_type == "gap":
             print(chrom + "_Tb427v10", ".", "gap", str(start), str(end), ".", ".", ".", sep="\t")
         else:
-            if len(read_names) > 0:
+            if len(read_names) >= min_reads_in_cluster:
                 read_clusters = filter_clusters(cluster_reads(read_names, ref_dict, fixed_dict,
                                                             max_ref_fixed_diff=max_ref_fixed_diff, 
-                                                                max_ref_fixed_sum=max_ref_fixed_sum))
+                                                                max_ref_fixed_sum=max_ref_fixed_sum),
+                                                min_reads=min_reads_in_cluster)
                 cluster_fixed = get_mean_deviation_in_clusters(read_clusters, ref_dict, fixed_dict)
                 gap_closed = False
                 min_fixed = float("inf")
