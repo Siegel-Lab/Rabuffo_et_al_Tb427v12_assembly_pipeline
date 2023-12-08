@@ -38,10 +38,8 @@ setup() {
 #
 # @todo section:
 #
-# - check for reads that connect different contigs
-#
-# - remember to ask raul for the final v11 assembly
-# - pick data from anna and what raul sent
+# - decide whether to include the unitigs
+# - write mail to pin
 #
 
 
@@ -154,8 +152,11 @@ main(){
                 ${DATA_DIR}/out/8_merged_genomes/assembly.fasta \
                 ${DATA_DIR}/in/mask_repeats/manual_mask.gff
                 # -> ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta
-    cat ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta ${DATA_DIR}/out/10.1_test_masked_repeats/removed_sequences.fasta > ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta
-                
+
+    sed 's/>Chr10_A_Tb427v10 250001 251000/>Chr10_A_Tb427v10_masked_250001_251000/g' ${DATA_DIR}/out/10.1_test_masked_repeats/removed_sequences.fasta > ${DATA_DIR}/out/10.1_test_masked_repeats/removed_renamed.fasta
+
+    cat ${DATA_DIR}/out/10.1_test_masked_repeats/masked.fasta ${DATA_DIR}/out/10.1_test_masked_repeats/removed_renamed.fasta > ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta
+
     gap_spanning_reads ${DATA_DIR}/out/10.2_test_gap_spanning_reads \
                     ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
                     ${ONT_READS_IN} \
@@ -165,10 +166,9 @@ main(){
                 ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta
                 # -> ${DATA_DIR}/out/16_reannotated_gaps/gaps.gff3
 
-    align_reads_to_genome ${DATA_DIR}/out/10.4_test_align_reads \
-        ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
-        ${ONT_READS_IN}
-    exit
+    # align_reads_to_genome ${DATA_DIR}/out/10.4_test_align_reads \
+    #     ${DATA_DIR}/out/10.1_test_masked_repeats/joined.fasta \
+    #     ${ONT_READS_IN}
 
     identify_collapsed_regions ${DATA_DIR}/out/13_identify_collapsed_regions \
         ${DATA_DIR}/out/10_gap_spanning_reads/distance_deviation.tsv \
@@ -278,6 +278,13 @@ main(){
     align_reads_to_genome ${DATA_DIR}/out/26_aligned_reads_on_new_genome \
         ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
         ${ONT_READS_IN}
+        # -> ${DATA_DIR}/out/26_aligned_reads_on_new_genome/reads.bam
+
+    analyze_error_rates ${DATA_DIR}/out/26.1_analyze_error_rates \
+        ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+        ${DATA_DIR}/out/26_aligned_reads_on_new_genome/reads.bam \
+        ${DATA_DIR}/out/20_transfer_fixed_regions/combined.transfered.gff
+
 
     analyze_gaps_closed_correctly ${DATA_DIR}/out/27_analyze_gaps_closed_correctly \
                                   ${DATA_DIR}/out/2.1_gap_spanning_reads/distance_deviation.tsv \
@@ -1135,6 +1142,29 @@ assembly_gaps_individually(){
         echo "OK" > ${OUT_FOLDER}/assembly_gaps_individually.done
     fi
 }
+
+
+analyze_error_rates(){
+    OUT_FOLDER=$1
+    ASSEMBLY=$2
+    ALIGNMENTS=$3
+    GAPS=$4
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/analyze_error_rates.done ]; then
+        echo running analyze_error_rates in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/bin_genome_based_on_gff.py \
+                ${GAPS} \
+            > ${OUT_FOLDER}/binned_genome.tsv
+
+        samtools stats -t ${OUT_FOLDER}/binned_genome.tsv -r ${ASSEMBLY} ${ALIGNMENTS} > ${OUT_FOLDER}/alignment.stats
+
+        echo "OK" > ${OUT_FOLDER}/analyze_error_rates.done
+    fi
+}
+
 
 
 main
