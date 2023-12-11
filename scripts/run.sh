@@ -280,10 +280,10 @@ main(){
         ${ONT_READS_IN}
         # -> ${DATA_DIR}/out/26_aligned_reads_on_new_genome/reads.bam
 
-    analyze_error_rates ${DATA_DIR}/out/26.1_analyze_error_rates \
-        ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
-        ${DATA_DIR}/out/26_aligned_reads_on_new_genome/reads.bam \
-        ${DATA_DIR}/out/20_transfer_fixed_regions/combined.transfered.gff
+    # analyze_error_rates ${DATA_DIR}/out/26.1_analyze_error_rates \
+    #     ${DATA_DIR}/out/18_closed_gaps/assembly.fasta \
+    #     ${DATA_DIR}/out/26_aligned_reads_on_new_genome/reads.bam \
+    #     ${DATA_DIR}/out/20_transfer_fixed_regions/combined.transfered.gff
 
 
     analyze_gaps_closed_correctly ${DATA_DIR}/out/27_analyze_gaps_closed_correctly \
@@ -706,7 +706,7 @@ generate_overview_pic(){
             --feature_types ${FEATURES} \
             --alpha 0.99 \
             --feature_color_mapping ${FEATURE_COLORS} \
-            --x_tick_distance 500000 \
+            --x_tick_distance -1 \
             --font_size 1 \
             --output_file ${OUT_FOLDER}/overview.svg
         conda deactivate
@@ -1151,6 +1151,7 @@ analyze_error_rates(){
     GAPS=$4
 
     mkdir -p ${OUT_FOLDER}
+    mkdir -p ${OUT_FOLDER}/loop_files
 
     if [ ! -e ${OUT_FOLDER}/analyze_error_rates.done ]; then
         echo running analyze_error_rates in ${OUT_FOLDER}
@@ -1159,12 +1160,22 @@ analyze_error_rates(){
                 ${GAPS} \
             > ${OUT_FOLDER}/binned_genome.tsv
 
-        samtools stats -t ${OUT_FOLDER}/binned_genome.tsv -r ${ASSEMBLY} ${ALIGNMENTS} > ${OUT_FOLDER}/alignment.stats
+        echo "#columns: chr start end error_rate" > ${OUT_FOLDER}/combined_error_rates.tsv
+
+        while read -r CHR START END
+        do
+            BIN="${CHR}_${START}_${END}"
+            echo -e "${CHR}\t${START}\t${END}" > ${OUT_FOLDER}/loop_files/${BIN}.tsv
+            samtools stats -t ${OUT_FOLDER}/loop_files/${BIN}.tsv -r ${ASSEMBLY} ${ALIGNMENTS} > \
+                    ${OUT_FOLDER}/loop_files/${BIN}.stats
+
+            ERROR_RATE=$(grep "error rate" ${OUT_FOLDER}/loop_files/${BIN}.stats | cut -f 4)
+            echo "${CHR} ${START} ${END} ${ERROR_RATE}" >> ${OUT_FOLDER}/combined_error_rates.tsv
+        done < ${OUT_FOLDER}/binned_genome.tsv
 
         echo "OK" > ${OUT_FOLDER}/analyze_error_rates.done
     fi
 }
-
 
 
 main

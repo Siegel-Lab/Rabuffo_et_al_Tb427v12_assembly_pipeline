@@ -358,6 +358,8 @@ class AnnoViz(object):
         self._set_ticks(ax)
 
     def _set_ticks(self, ax):
+        if self._x_tick_distance == -1:
+            ax.axes.get_xaxis().set_visible(False)
         if self._x_tick_distance is not None:
             start, end = ax.get_xlim()
             ax.xaxis.set_ticks(np.arange(start, end, self._x_tick_distance))
