@@ -22,12 +22,14 @@ def bin_genome_based_on_gff(gff):
         v = gaps_per_contig[k] if k in gaps_per_contig else []
         v.sort()
         if len(v) == 0:
-            print(k, 1, contig_sizes[k], sep="\t")
+            print(k, 1, contig_sizes[k], False, sep="\t")
             continue
-        print(k, 1, v[0][0] - 1, sep="\t")
+        print(k, 1, v[0][0] - 1, False, sep="\t")
         for s, e in v:
-            print(k, s, e, sep="\t")
-        print(k, v[-1][1] + 1, contig_sizes[k], sep="\t")
+            print(k, s, e, True, sep="\t")
+        for (s1, e1), (s2, e2) in zip(v[:-1], v[1:]):
+            print(k, e1 + 1, s2 - 1, False, sep="\t")
+        print(k, v[-1][1] + 1, contig_sizes[k], False, sep="\t")
 
 
 
