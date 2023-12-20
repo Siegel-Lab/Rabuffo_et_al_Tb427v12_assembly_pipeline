@@ -12,7 +12,6 @@ def load_dist_dev(file_name, max_dist=None):
                 readname, distance, expected, chr, pos1, pos2, strnd, map_q = line.strip().split()
                 if max_dist is None or int(distance) < max_dist:
                     names.append(readname)
-                    chr = chr[:-len("_Tb427v10")]
                     ret.append([int(distance), int(expected), chr, int(pos1), int(pos2), strnd, int(map_q)])
     return names, ret
 
@@ -26,11 +25,9 @@ def load_gaps(file_name):
             if line[0] == "#":
                 if line.startswith("##sequence-region"):
                     contig, _, end = line.strip().split()[1:]
-                    contig = contig[:-len("_Tb427v10")]
                     contig_sizes[contig] = int(end)
                 continue
             contig, source, anno_type, start, end, *extra = line.strip().split()
-            contig = contig[:-len("_Tb427v10")]
             
             gap_name = contig + ":" + str(int(start)//1000) + "kbp"
             gap_pos[gap_name] = [contig, int(start), int(end), anno_type]
@@ -187,7 +184,7 @@ def main(distance_deviation_filename, reference_gaps_filename, missassemblies_gf
 
     with open(missassemblies_gff_filename, "w") as file_out:
         for cluster_chr, cluster_start, cluster_end, cluster_deviation, c in kept_clusters:
-            file_out.write("\t".join([cluster_chr + "_Tb427v10", ".", region_name, str(cluster_start), str(cluster_end), ".", ".", ".", ""]) + "\n" )
+            file_out.write("\t".join([cluster_chr, ".", region_name, str(cluster_start), str(cluster_end), ".", ".", ".", ""]) + "\n" )
 
     # if filter_overlap:
     #     gap_without_cluster = {}

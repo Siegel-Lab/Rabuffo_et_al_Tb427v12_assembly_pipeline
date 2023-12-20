@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --cpus-per-task=18
-#SBATCH --mem=500G
+#SBATCH --mem=250G
 #SBATCH --time=7-00:00:00
-#SBATCH --partition=fat
+#SBATCH --partition=slim18
 #SBATCH --job-name=ont_try_assembly
 #SBATCH -o slurm_out/ont_assembly-%j.out
 
@@ -19,14 +19,19 @@ setup() {
     module load ngs/deeptools/3.5.0
     module load ngs/bedtools2/2.28.0
 
-    GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
-    GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
-    GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
+    # GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
+    # GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
+    GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v11)
+    GENOME_FILENAME_IN="Tb427v11_diploid_scaffolded"
+    # GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
+    GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v11/Tb427v11_diploid_scaffolded.gff3)
     ANA_LYSIS_IN=$(realpath ../data/in/analysis_in)
     REF_CENTRO=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
     GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
     # ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.nanopore.gz)
     ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.large.nanopore.gz)
+
+    INPUT_CONTIG_SUFFIX="Tb427v11"
     
     BIN_DIR=$(realpath ../bin/)
     DATA_DIR=$(realpath ../data)
@@ -43,10 +48,11 @@ setup() {
 
 #
 # @todo section:
+# - mail pin
 #
-# - decide whether to include the unitigs
-# - write mail to pin
-#
+#           1044222    slim16 align-pa mschmidt  R    4:51:01      1 slim01
+#           1044214       fat ont_try_ mschmidt  R    5:22:06      1 fat01
+#           1044313    slim16      ara mschmidt  R      21:39      1 slim01
 
 
 
@@ -100,19 +106,19 @@ main(){
                             # -> ${OUT_DIR}/5_split_genome/A.fasta
                             # -> ${OUT_DIR}/5_split_genome/B.fasta
                             # -> ${OUT_DIR}/5_split_genome/remainder.fasta
-                            # -> ${OUT_DIR}/5_split_genome/reads.A.fasta
-                            # -> ${OUT_DIR}/5_split_genome/reads.B.fasta
+                            # -> ${OUT_DIR}/5_split_genome/reads.A.fasta.gz
+                            # -> ${OUT_DIR}/5_split_genome/reads.B.fasta.gz
 
     mask_and_close ${OUT_DIR}/6_closed_gaps_a \
                    ${OUT_DIR}/5_split_genome/A.fasta \
-                   ${OUT_DIR}/5_split_genome/reads.A.fasta \
+                   ${OUT_DIR}/5_split_genome/reads.A.fasta.gz \
                    ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
                    ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta 
                     # -> ${OUT_DIR}/6_closed_gaps_a/7.1_undo_failed_masking/masking_undone.fasta
 
     mask_and_close ${OUT_DIR}/7_closed_gaps_b \
                    ${OUT_DIR}/5_split_genome/B.fasta \
-                   ${OUT_DIR}/5_split_genome/reads.B.fasta \
+                   ${OUT_DIR}/5_split_genome/reads.B.fasta.gz \
                     ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
                    ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
                     # -> ${OUT_DIR}/7_closed_gaps_b/7.1_undo_failed_masking/masking_undone.fasta
@@ -159,7 +165,7 @@ main(){
                 ${DATA_DIR}/in/mask_repeats/manual_mask.gff
                 # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
 
-    sed 's/>Chr10_A_Tb427v10 250001 251000/>Chr10_A_Tb427v10_masked_250001_251000/g' ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
+    sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
 
     cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
 
@@ -628,7 +634,7 @@ move_annotation(){
     if [ ! -e ${OUT_FOLDER}/move_annotation.done ]; then
         echo running move_annotation in ${OUT_FOLDER}
 
-        grep ${ANNOTATION_NAME} ${GFF_IN} | grep -v "_3B_Tb427v10" > ${OUT_FOLDER}/${ANNOTATION_NAME}.filtered.gff
+        grep ${ANNOTATION_NAME} ${GFF_IN} | grep -v "_3B_${INPUT_CONTIG_SUFFIX}" > ${OUT_FOLDER}/${ANNOTATION_NAME}.filtered.gff
 
 
         transfer_annotation ${OUT_FOLDER} \
@@ -791,8 +797,8 @@ identify_collapsed_regions(){
 # Output:
 # ${OUT_FOLDER}/A.fasta
 # ${OUT_FOLDER}/B.fasta
-# ${OUT_FOLDER}/reads.A.fasta
-# ${OUT_FOLDER}/reads.B.fasta
+# ${OUT_FOLDER}/reads.A.fasta.gz
+# ${OUT_FOLDER}/reads.B.fasta.gz
 split_genome_in_a_and_b(){
     OUT_FOLDER=$1
     GENOME_IN=$2
@@ -804,9 +810,9 @@ split_genome_in_a_and_b(){
         echo running split_genome_in_a_and_b in ${OUT_FOLDER}
 
         # split genomes
-        grep ">" ${GENOME_IN} | grep "A_Tb427v10" | awk '{print substr($1,2)}' > ${OUT_FOLDER}/A.lst
-        grep ">" ${GENOME_IN} | grep "B_Tb427v10" | awk '{print substr($1,2)}' > ${OUT_FOLDER}/B.lst
-        grep ">" ${GENOME_IN} | grep -v "A_Tb427v10" | grep -v "B_Tb427v10" | awk '{print substr($1,2)}' \
+        grep ">" ${GENOME_IN} | grep "A_${INPUT_CONTIG_SUFFIX}" | awk '{print substr($1,2)}' > ${OUT_FOLDER}/A.lst
+        grep ">" ${GENOME_IN} | grep "B_${INPUT_CONTIG_SUFFIX}" | awk '{print substr($1,2)}' > ${OUT_FOLDER}/B.lst
+        grep ">" ${GENOME_IN} | grep -v "A_${INPUT_CONTIG_SUFFIX}" | grep -v "B_${INPUT_CONTIG_SUFFIX}" | awk '{print substr($1,2)}' \
                 > ${OUT_FOLDER}/remainder.lst
 
         ${BIN_DIR}/seqtk/seqtk subseq ${GENOME_IN} ${OUT_FOLDER}/A.lst > ${OUT_FOLDER}/A.fasta
@@ -819,10 +825,10 @@ split_genome_in_a_and_b(){
 
         zcat ${READS_IN} | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/B.lst \
                     | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/remainder.lst \
-                    > ${OUT_FOLDER}/reads.A.fasta
+                    | gzip > ${OUT_FOLDER}/reads.A.fasta.gz
         zcat ${READS_IN} | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/A.lst \
                     | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/remainder.lst \
-                    > ${OUT_FOLDER}/reads.B.fasta
+                    | gzip > ${OUT_FOLDER}/reads.B.fasta.gz
 
         echo "OK" > ${OUT_FOLDER}/split_genome_in_a_and_b.done
     fi
@@ -1070,7 +1076,7 @@ transfer_fixed_regions(){
                 > ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff
 
             echo "failed to transfer this many ${FEATURE_NAME_OUT}:"
-            wc -l ${OUT_FOLDER}/${FEATURE_NAME_OUT}.failed.gff
+            grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.failed.gff | wc -l
             echo ""
 
             grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff >> ${OUT_FOLDER}/annotation_combined.gff
