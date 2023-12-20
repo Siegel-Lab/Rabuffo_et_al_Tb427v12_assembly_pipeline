@@ -1079,8 +1079,10 @@ transfer_fixed_regions(){
             grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.failed.gff | wc -l
             echo ""
 
-            grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff >> ${OUT_FOLDER}/annotation_combined.gff
-            grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff >> ${OUT_FOLDER}/combined.transfered.gff
+            if [ "$(grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff | wc -l)" != "0" ]; then
+                grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff >> ${OUT_FOLDER}/annotation_combined.gff
+                grep -v "#" ${OUT_FOLDER}/${FEATURE_NAME_OUT}.transfered.gff >> ${OUT_FOLDER}/combined.transfered.gff
+            fi
 
         done < <(echo ${GFF_FILES_IN} | tr ' ' '\n')
 
