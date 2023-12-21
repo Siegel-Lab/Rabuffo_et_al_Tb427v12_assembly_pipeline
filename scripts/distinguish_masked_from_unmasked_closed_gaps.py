@@ -30,6 +30,12 @@ def distinguish_masked_from_unmasked(gaps_before_closing, gaps_after_masking_und
             if what == "filledgap":
                 old_start, old_end = old_gff[idx]
                 key = contig + " " + str(old_start) + " " + str(old_end)
+                if key in masked:
+                    es = extra.split(";")
+                    for idx, e in enumerate(es):
+                        if "previous_size" in e:
+                            es[idx] = "previous_size=" + str(len(masked[key]))
+                    extra = ";".join(es)
                 print(contig, x1, "filledmasked" if key in masked else "filledgap", start, end, x2, x3, x4, extra, 
                       sep="\t")
             else:

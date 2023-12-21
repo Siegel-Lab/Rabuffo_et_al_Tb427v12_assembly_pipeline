@@ -1,7 +1,7 @@
 import fileinput
 import sys
 
-def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
+def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in, tb427Ver):
     old_gaps_by_contig = {}
     with fileinput.input(old_gaps) as in_file:
         for line in in_file:
@@ -66,7 +66,9 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
     for name, (start, end, contig) in contigs.items():
         start_gap = None
         end_gap = None
-        if contig in old_gaps_by_contig and contig in new_gap_by_contig:
+        if "unitig" in name:
+            print(contig, ".", "unitig", 1, end, ".", "+", ".", "Name=" + name, sep="\t")
+        elif contig in old_gaps_by_contig and contig in new_gap_by_contig:
             for idx, gap in enumerate(old_gaps_by_contig[contig]):
                 if "_core_" in name or "_3A_" in name or "_3B_" in name:
                     if gap[1] + 1 == start:
@@ -91,12 +93,12 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in):
                     end = new_gap_by_contig[contig][end_gap][1]
 
             if "_3A_" in name or "_3B_" in name \
-                or ("_core_Tb427v10_A" in name and name.replace("_core_Tb427v10_A", "_3A_Tb427v10") not in contigs) \
-                or ("_core_Tb427v10_B" in name and name.replace("_core_Tb427v10_B", "_3B_Tb427v10") not in contigs):
+                or ("_core_" + tb427Ver + "_A" in name and name.replace("_core_" + tb427Ver + "_A", "_3A_" + tb427Ver) not in contigs) \
+                or ("_core_" + tb427Ver + "_B" in name and name.replace("_core_" + tb427Ver + "_B", "_3B_" + tb427Ver) not in contigs):
                 end = contig_lengths[contig]
 
             print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", start, end, ".", 
-                  "+" if "_core_Tb427v10_A" in name or "_3A_" in name or "_5A_" in name else "-", 
+                  "+" if "_core_" + tb427Ver + "_A" in name or "_3A_" in name or "_5A_" in name else "-", 
                   ".", "Name=" + name, sep="\t")
         else:
             print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", 1, contig_lengths[contig], ".", 

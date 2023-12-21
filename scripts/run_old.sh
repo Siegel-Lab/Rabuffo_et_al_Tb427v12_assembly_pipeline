@@ -19,25 +19,25 @@ setup() {
     module load ngs/deeptools/3.5.0
     module load ngs/bedtools2/2.28.0
 
-    # GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
-    # GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
-    GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v11)
-    GENOME_FILENAME_IN="Tb427v11_diploid_scaffolded"
-    # GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
-    GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v11/Tb427v11_diploid_scaffolded.gff3)
+    GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
+    GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
+    # GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v11)
+    # GENOME_FILENAME_IN="Tb427v11_diploid_scaffolded"
+    GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
+    # GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v11/Tb427v11_diploid_scaffolded.gff3)
     ANA_LYSIS_IN=$(realpath ../data/in/analysis_in)
     REF_CENTRO=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
     GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
-    # ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.nanopore.gz)
-    ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.large.nanopore.gz)
+    ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.nanopore.gz)
+    # ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.large.nanopore.gz)
 
-    INPUT_CONTIG_SUFFIX="Tb427v11"
+    INPUT_CONTIG_SUFFIX="Tb427v10"
     OUTPUT_CONTIG_SUFFIX="Tb427v12"
     
     BIN_DIR=$(realpath ../bin/)
     DATA_DIR=$(realpath ../data)
 
-    OUT_FOLDER="out_large"
+    OUT_FOLDER="out"
 
     mkdir -p ${DATA_DIR}/${OUT_FOLDER}
     OUT_DIR=$(realpath ../data/${OUT_FOLDER})

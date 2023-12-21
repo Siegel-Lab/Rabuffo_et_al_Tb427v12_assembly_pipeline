@@ -54,7 +54,7 @@ def transfer_annotation_exact_match(old_genome, new_genome, annotation, annos_no
         print("##sequence-region", name, "1", len(seq), sep="\t")
     with open(annos_not_found, "w") as out_file:
         out_file.write("##gff-version 3\n")
-        for name, seq in old_contigs.items():
+        for name, seq in new_contigs.items():
             out_file.write(" ".join(["##sequence-region", name, "1", str(len(seq))]) + "\n")
         with fileinput.input(annotation) as in_file:
             for line in in_file:
