@@ -37,7 +37,7 @@ setup() {
     BIN_DIR=$(realpath ../bin/)
     DATA_DIR=$(realpath ../data)
 
-    OUT_FOLDER="out_large"
+    OUT_FOLDER="out"
 
     mkdir -p ${DATA_DIR}/${OUT_FOLDER}
     OUT_DIR=$(realpath ../data/${OUT_FOLDER})
@@ -233,7 +233,7 @@ main(){
 
 
     transfer_annotation ${OUT_DIR}/19_transfer_annotation \
-                        ${OUT_DIR}/18_closed_gaps/assembly.fasta \
+                        ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                         ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
                         ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                         ${OUT_DIR}/18.2_reannotated_gaps/gaps.gff3
@@ -266,7 +266,6 @@ main(){
                                  ${OUT_DIR}/20_transfer_fixed_regions/combined.transfered.gff
                                  # -> ${OUT_DIR}/22_vpr_new_genome/distance_deviation.tsv
 
-
     annotate_cores_and_subtelomeric_contigs ${OUT_DIR}/23_annotate_cores_and_subt \
             ${OUT_DIR}/2_ref_reannotated_gaps/gaps.gff3 \
             ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
@@ -274,6 +273,7 @@ main(){
             "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" \
             ${INPUT_CONTIG_SUFFIX}
             # -> ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
+    
 
     extract_regions ${OUT_DIR}/24_extract_haploid_genome \
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
@@ -288,7 +288,9 @@ main(){
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
     collect_output_files ${OUT_DIR}/29_final_output
-
+    
+    exit
+    
     # here comes the analysis part !
 
     align_reads_to_genome ${OUT_DIR}/26_aligned_reads_on_new_genome \
@@ -331,14 +333,14 @@ collect_output_files(){
         grep ">" ${OUT_DIR}/24_extract_haploid_genome/new_assembly.fasta \
             | grep -v "core_${INPUT_CONTIG_SUFFIX}_B" \
             | awk '{print substr($1,2)}' \
-            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}/contigs.lst
+            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/contigs.lst
 
         ${BIN_DIR}/seqtk/seqtk subseq ${OUT_DIR}/24_extract_haploid_genome/new_assembly.fasta \
-                                      ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}/contigs.lst \
+                                      ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/contigs.lst \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_A/core_${OUTPUT_CONTIG_SUFFIX}/g" \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta
-        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}/contigs.lst
+        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/contigs.lst
 
         grep -vP "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked\|core_${INPUT_CONTIG_SUFFIX}_B" \
                 ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
@@ -367,7 +369,7 @@ collect_output_files(){
            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta
 
-        cat ${OUT_DIR}/${OUT_DIR}/19_transfer_annotation/annotation_combined.gff \
+        cat ${OUT_DIR}/19_transfer_annotation/annotation_combined.gff \
            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.gff
 

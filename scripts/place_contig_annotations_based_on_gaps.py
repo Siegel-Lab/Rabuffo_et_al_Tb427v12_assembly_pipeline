@@ -97,6 +97,8 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in, tb
                 or ("_core_" + tb427Ver + "_B" in name and name.replace("_core_" + tb427Ver + "_B", "_3B_" + tb427Ver) not in contigs):
                 end = contig_lengths[contig]
 
+            if end <= start:
+                print("WARNING: contig ", name, "has negative length", file=sys.stderr)
             print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", start, end, ".", 
                   "+" if "_core_" + tb427Ver + "_A" in name or "_3A_" in name or "_5A_" in name else "-", 
                   ".", "Name=" + name, sep="\t")
