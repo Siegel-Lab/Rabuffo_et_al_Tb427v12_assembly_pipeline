@@ -340,9 +340,10 @@ collect_output_files(){
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_A/core_${OUTPUT_CONTIG_SUFFIX}/g" \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta
+
         rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/contigs.lst
 
-        grep -vP "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked\|core_${INPUT_CONTIG_SUFFIX}_B" \
+        grep -v "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked\|core_${INPUT_CONTIG_SUFFIX}_B" \
                 ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_A/core_${OUTPUT_CONTIG_SUFFIX}/g" \
@@ -356,7 +357,7 @@ collect_output_files(){
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta
 
-        grep -vP "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked" \
+        grep -v "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked" \
                 ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.gff
