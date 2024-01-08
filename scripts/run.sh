@@ -163,7 +163,8 @@ main(){
 
     mask_region ${OUT_DIR}/10.1_test_masked_repeats \
                 ${OUT_DIR}/8_merged_genomes/assembly.fasta \
-                ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+                ${DATA_DIR}/in/mask_repeats/manual_mask.gff \
+                ${OUT_DIR}/8.1_transfer_annotation/annotation_combined.gff
                 # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
 
     sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
@@ -197,8 +198,10 @@ main(){
 
     mask_region ${OUT_DIR}/15_masked_repeats \
                 ${OUT_DIR}/8_merged_genomes/assembly.fasta \
-                ${OUT_DIR}/13_identify_collapsed_regions/collapsed_regions.gff
+                ${OUT_DIR}/13_identify_collapsed_regions/collapsed_regions.gff \
+                ${OUT_DIR}/8.1_transfer_annotation/annotation_combined.gff
                 # -> ${OUT_DIR}/15_masked_repeats/masked.fasta
+                # -> ${OUT_DIR}/15_masked_repeats/annotations.gff
 
     annotate_gaps ${OUT_DIR}/16_reannotated_gaps \
                 ${OUT_DIR}/15_masked_repeats/masked.fasta
@@ -234,8 +237,8 @@ main(){
 
     transfer_annotation ${OUT_DIR}/19_transfer_annotation \
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
-                        ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
-                        ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
+                        ${OUT_DIR}/15_masked_repeats/annotations.gff \
+                        ${OUT_DIR}/15_masked_repeats/masked.fasta \
                         ${OUT_DIR}/18.2_reannotated_gaps/gaps.gff3
                         # ->  ${OUT_DIR}/19_transfer_annotation/annotation_combined.gff
 
@@ -739,7 +742,14 @@ transfer_annotation(){
     if [ ! -e ${OUT_FOLDER}/transfer_annotation.done ]; then
         echo running transfer_annotation in ${OUT_FOLDER}
 
-        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+        # python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+        #         ${ASSEMBLY_IN} \
+        #         ${ASSEMBLY_TRANSFER} \
+        #         ${GFF_IN} \
+        #         ${OUT_FOLDER}/annotation.failed.gff \
+        #     > ${OUT_FOLDER}/annotation.transfered.gff
+
+        python3 ${SCRIPTS_DIR}/transfer_annotation_coordinate_change.py \
                 ${ASSEMBLY_IN} \
                 ${ASSEMBLY_TRANSFER} \
                 ${GFF_IN} \
@@ -747,7 +757,7 @@ transfer_annotation(){
             > ${OUT_FOLDER}/annotation.transfered.gff
 
         echo "failed to transfer this many annotations:"
-        wc -l ${OUT_FOLDER}/annotation.failed.gff
+        grep -v "#" ${OUT_FOLDER}/annotation.failed.gff | wc -l
         echo ""
 
         if [ ! -z "${GFF_TRANSFER}" ]
@@ -1001,10 +1011,12 @@ align_reads_to_genome(){
 # Output:
 # ${OUT_FOLDER}/masked.fasta
 # ${OUT_FOLDER}/removed_sequences.fasta
+# ${OUT_FOLDER}/annotations.gff
 mask_region(){
     OUT_FOLDER=$1
     GENOME_IN=$2
     GFF_IN=$3
+    ANNOTATIONS_IN=$4
 
     mkdir -p ${OUT_FOLDER}
 
@@ -1016,6 +1028,8 @@ mask_region(){
             ${GENOME_IN} \
             ${GFF_IN} \
             ${OUT_FOLDER}/removed_sequences.fasta \
+            ${ANNOTATIONS_IN} \
+            ${OUT_FOLDER}/annotations.gff \
             > ${OUT_FOLDER}/masked.fasta
 
         echo "OK" > ${OUT_FOLDER}/mask_region.done
