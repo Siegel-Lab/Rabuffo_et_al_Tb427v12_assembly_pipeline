@@ -249,11 +249,14 @@ main(){
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
                         # -> ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff
 
+    GREEN="#009e73"
+    BLUE="#0072b2"
+    ORANGE="#d55e00"
 
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
                         ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff \
                         "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region closedgap_masked gap" \
-                        "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
+                        "gene=lightgrey;closedgap_full=^:${GREEN};closedgap_a=^:${GREEN};closedgap_b=^:${GREEN};closedgap_masked=^:${GREEN};expanded_region=v:${BLUE};gap=^:${ORANGE}"
 
     generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
                         ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
@@ -288,9 +291,8 @@ main(){
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
     collect_output_files ${OUT_DIR}/29_final_output
-    
-    exit
-    
+
+
     # here comes the analysis part !
 
     align_reads_to_genome ${OUT_DIR}/26_aligned_reads_on_new_genome \
@@ -784,7 +786,7 @@ generate_overview_pic(){
             --feature_types ${FEATURES} \
             --alpha 0.99 \
             --feature_color_mapping ${FEATURE_COLORS} \
-            --x_tick_distance -1 \
+            --x_tick_distance 500000 \
             --font_size 1 \
             --output_file ${OUT_FOLDER}/overview.svg
         conda deactivate

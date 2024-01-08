@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches
 import matplotlib.backends.backend_pdf
 import matplotlib.gridspec
+from matplotlib import markers
+from matplotlib.path import Path
 #Raul additins####
 #matplotlib.rcParams['pdf.fonttype'] = 42
 #matplotlib.rcParams['ps.fonttype'] = 42
@@ -62,6 +64,68 @@ __license__ = "ISC license"
 __email__ = "konrad@foerstner.org"
 __version__ = "0.6dev"
 
+def align_marker(marker, halign='center', valign='middle'):
+    """
+    create markers with specified alignment.
+
+    Parameters
+    ----------
+
+    marker : a valid marker specification.
+      See mpl.markers
+
+    halign : string, float {'left', 'center', 'right'}
+      Specifies the horizontal alignment of the marker. *float* values
+      specify the alignment in units of the markersize/2 (0 is 'center',
+      -1 is 'right', 1 is 'left').
+
+    valign : string, float {'top', 'middle', 'bottom'}
+      Specifies the vertical alignment of the marker. *float* values
+      specify the alignment in units of the markersize/2 (0 is 'middle',
+      -1 is 'top', 1 is 'bottom').
+
+    Returns
+    -------
+
+    marker_array : numpy.ndarray
+      A Nx2 array that specifies the marker path relative to the
+      plot target point at (0, 0).
+
+    Notes
+    -----
+    The mark_array can be passed directly to ax.plot and ax.scatter, e.g.::
+
+        ax.plot(1, 1, marker=align_marker('>', 'left'))
+
+    """
+
+    if isinstance(halign, str):
+        halign = {'right': -1.,
+                  'middle': 0.,
+                  'center': 0.,
+                  'left': 1.,
+                  }[halign]
+
+    if isinstance(valign, str):
+        valign = {'top': -1.,
+                  'middle': 0.,
+                  'center': 0.,
+                  'bottom': 1.,
+                  }[valign]
+
+    # Define the base marker
+    bm = markers.MarkerStyle(marker)
+
+    # Get the marker path and apply the marker transform to get the
+    # actual marker vertices (they should all be in a unit-square
+    # centered at (0, 0))
+    m_arr = bm.get_path().transformed(bm.get_transform()).vertices
+
+    # Shift the marker vertices for the specified alignment.
+    m_arr[:, 0] += halign / 2
+    m_arr[:, 1] += valign / 2
+
+    return Path(m_arr, bm.get_path().codes)
 
 def main():
     parser = argparse.ArgumentParser(description=__description__)
@@ -363,6 +427,9 @@ class AnnoViz(object):
         if self._x_tick_distance is not None:
             start, end = ax.get_xlim()
             ax.xaxis.set_ticks(np.arange(start, end, self._x_tick_distance))
+            ax.tick_params(axis='x', which='both', labelbottom=False)
+            ax.ticklabel_format(style='plain')
+
 
     def _generate_replicon_subplot_matplotlib_singlepage(
             self, figure, replicon, subplot_index,
@@ -394,16 +461,25 @@ class AnnoViz(object):
                     self._annotation_glyphs_by_replicon[replicon]["right"],
                     self._annotation_glyphs_by_replicon[replicon]["top"],
                     self._annotation_glyphs_by_replicon[replicon]["color"]):
+                if color[1] == ":":
+                    marker, color = color.split(":")
+                else:
+                    marker = None
                 rect = matplotlib.patches.Rectangle(
                     (left, bottom), right-left, top-bottom, color=color,
                     alpha=self._alpha)
                 ax.add_patch(rect)
-            # Genome middle bar
-            bar = matplotlib.patches.Rectangle(
-                (0, 4.95), self._replicons_and_lengths[replicon], 0.05,
-                color="#000000")
-            ax.add_patch(bar)
-            plt.xlim(0, self._replicons_and_lengths[replicon])
+                if marker is not None:
+                    ax.plot((left + right) / 2, 0 if marker in "^d" else 10, 
+                            marker=align_marker(marker.replace("p", "d"), 
+                            valign='top' if marker in "^d" else "bottom"), 
+                            color=color, clip_on=False, markersize=10)
+        # Genome middle bar
+        bar = matplotlib.patches.Rectangle(
+            (0, 4.95), self._replicons_and_lengths[replicon], 0.05,
+            color="#000000")
+        ax.add_patch(bar)
+        plt.xlim(0, self._replicons_and_lengths[replicon])
 
     def _viz_matplotlib_multipage(self):
         pp = matplotlib.backends.backend_pdf.PdfPages(self._output_file)
