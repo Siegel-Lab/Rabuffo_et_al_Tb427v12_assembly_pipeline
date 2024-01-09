@@ -116,6 +116,9 @@ def annotate_closed_gaps(old_genome, new_genome, old_gaps, overhang=1000, gap_si
                     if start == old_idx_a + 1 and end == old_idx_b:
                         idx = "ID="+str(idy) + ";previous_size=" + str(end - start + 1)
                         break
+                if idx == "ID=?":
+                    print("WARNING: could not find gap", contig_name, old_idx_a + 1, old_idx_b, gaps[contig_name],
+                          file=sys.stderr)
                 if new_sc_a == new_sc_b:
                     cropped_scaffold_a = old_scaffolds[old_sc_a][overhang:-overhang]
                     idx_a = 0

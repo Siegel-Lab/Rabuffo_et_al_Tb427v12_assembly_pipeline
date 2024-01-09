@@ -37,7 +37,7 @@ setup() {
     BIN_DIR=$(realpath ../bin/)
     DATA_DIR=$(realpath ../data)
 
-    OUT_FOLDER="out"
+    OUT_FOLDER="out_2_sth_strange_happened"
 
     mkdir -p ${DATA_DIR}/${OUT_FOLDER}
     OUT_DIR=$(realpath ../data/${OUT_FOLDER})
@@ -49,11 +49,21 @@ setup() {
 
 #
 # @todo section:
-# - mail pin
 #
-#           1044222    slim16 align-pa mschmidt  R    4:51:01      1 slim01
-#           1044214       fat ont_try_ mschmidt  R    5:22:06      1 fat01
-#           1044313    slim16      ara mschmidt  R      21:39      1 slim01
+# chr10_3B
+#
+#
+# running cut_superfluous_regions in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/2_cut_superfluous_regions
+# running mask_region in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/4_masked_superfluous_regions
+# running undo_masking in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/7.1_undo_failed_masking
+# running annotate_closed_gaps in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/7.1_undo_failed_masking
+# WARNING: could not find gap Chr11_hapA_Tb427v11 4908203 4909202 [[14617, 15616, '1'], [279329, 280328, '2'], [4651582, 4652581, '3'], [4918992, 4919991, '4'], [4971631, 4972630, '5']]
+# WARNING: could not find gap Chr11_hapA_Tb427v11 4951735 4952734 [[14617, 15616, '1'], [279329, 280328, '2'], [4651582, 4652581, '3'], [4918992, 4919991, '4'], [4971631, 4972630, '5']]
+#
+#
+#
+#
+
 
 
 
@@ -70,7 +80,13 @@ main(){
     #                 ${GFF_IN_XXX}
     #                 # -> ${OUT_DIR}/1_move_centro_anno/annotation_combined.gff
 
-    
+    # transfer_manual_annotations ${OUT_DIR}/0_transfer_siegel_group_annotations_to_diploid_v11 \
+    #                       "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta" \
+    #                       "../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta" \
+    #                       "../data/in/genome_in/HGAP3_Tb427v11/HGAP3_Tb427v11_diploid_scaffolded.fasta" \
+    #                       "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3"
+
+
 
     remove_annotated_gaps ${OUT_DIR}/1_remove_gap_annotation \
                           ${GFF_IN_XXX}
@@ -286,6 +302,7 @@ main(){
                 ${OUT_DIR}/23_annotate_cores_and_subt/contig_and_subt.gff \
                 ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
                 # -> ${OUT_DIR}/24_extract_haploid_genome/masked.fasta
+                # -> ${OUT_DIR}/24_extract_haploid_genome/annotation.gff
 
 
     generate_overview_pic ${OUT_DIR}/25_overview_of_final_assembly \
@@ -384,6 +401,56 @@ collect_output_files(){
     fi
 }
 
+transfer_manual_annotations(){
+    OUT_FOLDER=$1
+    V10_GENOME=$2
+    V10_GENOME_DIPLOID=$3
+    V11_GENOME_DIPLOID=$4
+    ANNOTATION_IN=$5
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/transfer_manual_annotations.done ]; then
+        echo running transfer_manual_annotations in ${OUT_FOLDER}
+
+        grep "Siegel_Group" ${ANNOTATION_IN} | grep "core" > ${OUT_FOLDER}/annotation.siegel_group.core.gff3
+        grep "Siegel_Group" ${ANNOTATION_IN} | grep -v "core" > ${OUT_FOLDER}/annotation.siegel_group.no_core.gff3
+
+        sed "s/_core_Tb427v10_A/_core_Tb427v10/g" ${V10_GENOME_DIPLOID} > ${OUT_FOLDER}/v10_genome_diploid.coraA_to_core.fasta
+        
+        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+                ${V10_GENOME} \
+                ${OUT_FOLDER}/v10_genome_diploid.coraA_to_core.fasta \
+                ${OUT_FOLDER}/annotation.siegel_group.core.gff3 \
+                ${OUT_FOLDER}/annotation.coreA.failed.gff \
+            | grep -v "#" > ${OUT_FOLDER}/annotation.coreA.transfered.gff
+
+        sed "s/_core_Tb427v10_B/_core_Tb427v10/g" ${V10_GENOME_DIPLOID} > ${OUT_FOLDER}/v10_genome_diploid.coraB_to_core.fasta
+        
+        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+                ${V10_GENOME} \
+                ${OUT_FOLDER}/v10_genome_diploid.coraB_to_core.fasta \
+                ${OUT_FOLDER}/annotation.siegel_group.core.gff3 \
+                ${OUT_FOLDER}/annotation.coreB.failed.gff \
+            | grep -v "#" > ${OUT_FOLDER}/annotation.coreB.transfered.gff
+
+        
+        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+                ${V10_GENOME} \
+                ${V11_GENOME_DIPLOID} \
+                ${OUT_FOLDER}/annotation.siegel_group.no_core.gff3 \
+                ${OUT_FOLDER}/annotation.v11.failed.gff \
+            > ${OUT_FOLDER}/annotation.v11.transfered.gff
+
+        cat ${OUT_FOLDER}/annotation.v11.transfered.gff \
+            ${OUT_FOLDER}/annotation.coreA.transfered.gff \
+            ${OUT_FOLDER}/annotation.coreB.transfered.gff \
+            > ${OUT_FOLDER}/annotation.transfered.gff
+
+        echo "OK" > ${OUT_FOLDER}/transfer_manual_annotations.done
+    fi
+}
+
 remove_annotated_gaps(){
     OUT_FOLDER=$1
     GFF_IN=$2
@@ -436,7 +503,8 @@ mask_and_close(){
 
     mask_region ${MaC_OUT_FOLDER}/4_masked_superfluous_regions \
                 ${MaC_GENOME} \
-                ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/filtered_superfluous_regions.gff
+                ${MaC_OUT_FOLDER}/2_cut_superfluous_regions/filtered_superfluous_regions.gff \
+                ${MaC_ORIGINAL_GFF_IN}
                 # -> ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/masked.fasta
                 # -> ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/removed_sequences.fasta
 
