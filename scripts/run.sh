@@ -535,9 +535,9 @@ mask_and_close(){
                 # -> ${MaC_OUT_FOLDER}/7.1_undo_failed_masking/gaps.gff3
 
     transfer_annotation ${MaC_OUT_FOLDER}/8_transfer_annotation \
-                        ${MaC_OUT_FOLDER}/7_closed_gaps/assembly.fasta \
-                        ${MaC_ORIGINAL_GFF_IN} \
-                        ${MaC_ORIGINAL_GENOME_IN} \
+                        ${MaC_OUT_FOLDER}/7.1_undo_failed_masking/masking_undone.fasta \
+                        ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/annotations.gff \
+                        ${MaC_OUT_FOLDER}/4_masked_superfluous_regions/masked.fasta \
                         ${MaC_OUT_FOLDER}/7.1_undo_failed_masking/gaps.gff3
                         # -> ${MaC_OUT_FOLDER}/8_transfer_annotation/annotation_combined.gff
 

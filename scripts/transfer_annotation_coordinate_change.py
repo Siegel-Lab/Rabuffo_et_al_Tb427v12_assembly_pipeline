@@ -39,7 +39,8 @@ def load_gff(filename):
             ret[fields[0]].append(fields)
     return ret
 
-def annotate_closed_gaps(old_genome, new_genome, annotation_file, transfer_failed_file, overhang=1000, gap_size=1000):
+def transfer_anno_coord_change(old_genome, new_genome, annotation_file, transfer_failed_file, 
+                               overhang=1000, gap_size=1000):
     old_contigs = load_contigs(old_genome)
     new_contigs = load_contigs(new_genome)
     annotations = load_gff(annotation_file)
@@ -64,19 +65,21 @@ def annotate_closed_gaps(old_genome, new_genome, annotation_file, transfer_faile
                     for idx, new_scaffold in enumerate(new_scaffolds):
                         if cropped_scaffold in new_scaffold:
                             curr_assignment.append(idx)
-                        # elif old_scaffold_rev_comp in new_scaffold:
+                        elif old_scaffold_rev_comp in new_scaffold:
+                            print("WARNING: scaffold has been reverse complemented for:", contig_name, "scaffold", jdx,
+                                  file=sys.stderr)
                         #     curr_assignment.append(idx)
                     if not len(curr_assignment) == 1:
                         print("WARNING: could not find assignment for:", contig_name, "scaffold", jdx, curr_assignment,
-                            file=sys.stderr)
+                            len(old_scaffolds), len(new_scaffolds), len(cropped_scaffold), file=sys.stderr)
                         # if len(scaffold_assignment) > 0:
                         #     print("last assignment:", scaffold_assignment[-1], file=sys.stderr)
-                        # print(contig_name)
-                        # print(curr_assignment)
-                        # print(jdx)
-                        # print(len(old_scaffolds), file=sys.stderr)
-                        # print(len(new_scaffolds), file=sys.stderr)
-                        # print(len(old_scaffold), file=sys.stderr)
+                        # print(contig_name,  file=sys.stderr)
+                        # print(curr_assignment,  file=sys.stderr)
+                        # print(jdx,  file=sys.stderr)
+                        # for idx, new_scaffold in enumerate(new_scaffolds):
+                        #     print(idx, len(new_scaffold),  file=sys.stderr)
+
                         # print(old_scaffold, file=sys.stderr)
                         # print(old_scaffold_rev_comp)
                         # assert False
@@ -139,4 +142,4 @@ def annotate_closed_gaps(old_genome, new_genome, annotation_file, transfer_faile
 
 
 if __name__ == '__main__':
-    annotate_closed_gaps(*sys.argv[1:])
+    transfer_anno_coord_change(*sys.argv[1:])
