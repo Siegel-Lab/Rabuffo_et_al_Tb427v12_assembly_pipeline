@@ -47,25 +47,6 @@ setup() {
 
 }
 
-#
-# @todo section:
-#
-# chr10_3B
-#
-#
-# running cut_superfluous_regions in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/2_cut_superfluous_regions
-# running mask_region in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/4_masked_superfluous_regions
-# running undo_masking in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/7.1_undo_failed_masking
-# running annotate_closed_gaps in /ladsie/project/ladsie_019/claudia/ont_assembly_improvement/data/out/4_close_gaps_full_genome/7.1_undo_failed_masking
-# WARNING: could not find gap Chr11_hapA_Tb427v11 4908203 4909202 [[14617, 15616, '1'], [279329, 280328, '2'], [4651582, 4652581, '3'], [4918992, 4919991, '4'], [4971631, 4972630, '5']]
-# WARNING: could not find gap Chr11_hapA_Tb427v11 4951735 4952734 [[14617, 15616, '1'], [279329, 280328, '2'], [4651582, 4652581, '3'], [4918992, 4919991, '4'], [4971631, 4972630, '5']]
-#
-#
-#
-#
-
-
-
 
 main(){
     setup
@@ -113,13 +94,13 @@ main(){
     mask_and_close ${OUT_DIR}/4_close_gaps_full_genome \
                    ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
                    ${ONT_READS_IN} \
-                   ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
-                   ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta 
+                   ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 
                     # -> ${OUT_DIR}/4_close_gaps_full_genome/7.1_undo_failed_masking/masking_undone.fasta
 
     split_genome_in_a_and_b ${OUT_DIR}/5_split_genome \
                             ${OUT_DIR}/4_close_gaps_full_genome/7.1_undo_failed_masking/masking_undone.fasta \
-                            ${ONT_READS_IN}
+                            ${ONT_READS_IN} \
+                            ${OUT_DIR}/4_close_gaps_full_genome/8_transfer_annotation/annotation.transfered.gff
                             # -> ${OUT_DIR}/5_split_genome/A.fasta
                             # -> ${OUT_DIR}/5_split_genome/B.fasta
                             # -> ${OUT_DIR}/5_split_genome/remainder.fasta
@@ -129,38 +110,32 @@ main(){
     mask_and_close ${OUT_DIR}/6_closed_gaps_a \
                    ${OUT_DIR}/5_split_genome/A.fasta \
                    ${OUT_DIR}/5_split_genome/reads.A.fasta.gz \
-                   ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
-                   ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta 
+                   ${OUT_DIR}/5_split_genome/A.gff 
                     # -> ${OUT_DIR}/6_closed_gaps_a/7.1_undo_failed_masking/masking_undone.fasta
 
     mask_and_close ${OUT_DIR}/7_closed_gaps_b \
                    ${OUT_DIR}/5_split_genome/B.fasta \
                    ${OUT_DIR}/5_split_genome/reads.B.fasta.gz \
-                    ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
-                   ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta
+                   ${OUT_DIR}/5_split_genome/B.gff 
                     # -> ${OUT_DIR}/7_closed_gaps_b/7.1_undo_failed_masking/masking_undone.fasta
 
 
     merge_genomes ${OUT_DIR}/8_merged_genomes \
                   ${OUT_DIR}/6_closed_gaps_a/7.1_undo_failed_masking/masking_undone.fasta \
                   ${OUT_DIR}/7_closed_gaps_b/7.1_undo_failed_masking/masking_undone.fasta \
-                  ${OUT_DIR}/5_split_genome/remainder.fasta
+                  ${OUT_DIR}/5_split_genome/remainder.fasta \
+                  ${OUT_DIR}/6_closed_gaps_a/8_transfer_annotation/annotation.transfered.gff \
+                  ${OUT_DIR}/7_closed_gaps_b/8_transfer_annotation/annotation.transfered.gff \
+                  ${OUT_DIR}/5_split_genome/remainder.gff
                  # -> ${OUT_DIR}/8_merged_genomes/assembly.fasta
                  # -> ${OUT_DIR}/8_merged_genomes/annotation.gff
 
-    transfer_annotation ${OUT_DIR}/8.1_transfer_annotation \
-                        ${OUT_DIR}/8_merged_genomes/assembly.fasta \
-                        ${OUT_DIR}/1_remove_gap_annotation/annotation.gapless.gff3 \
-                        ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-                        ${OUT_DIR}/8_merged_genomes/gaps.gff3
-                        # -> ${OUT_DIR}/8.1_transfer_annotation/annotation_combined.gff
-                        # -> ${OUT_DIR}/8.1_transfer_annotation/annotation.transfered.gff
 
     transfer_fixed_regions ${OUT_DIR}/8.2_transfer_fixed_regions \
                         "filledgap\|filledmasked;closedgap_full;${OUT_DIR}/4_close_gaps_full_genome/7.1_undo_failed_masking \
                          filledgap\|filledmasked;closedgap_a;${OUT_DIR}/6_closed_gaps_a/7.1_undo_failed_masking \
                          filledgap\|filledmasked;closedgap_b;${OUT_DIR}/7_closed_gaps_b/7.1_undo_failed_masking" \
-                        ${OUT_DIR}/8.1_transfer_annotation/annotation_combined.gff \
+                        ${OUT_DIR}/8_merged_genomes/annotation.gff \
                         ${OUT_DIR}/8_merged_genomes/assembly.fasta
                         # -> ${OUT_DIR}/8.2_transfer_fixed_regions/annotation_combined.gff
                         # -> ${OUT_DIR}/8.2_transfer_fixed_regions/combined.transfered.gff
@@ -177,24 +152,24 @@ main(){
                     # -> ${OUT_DIR}/10_gap_spanning_reads/distance_deviation.tsv
 
 
-    mask_region ${OUT_DIR}/10.1_test_masked_repeats \
-                ${OUT_DIR}/8_merged_genomes/assembly.fasta \
-                ${DATA_DIR}/in/mask_repeats/manual_mask.gff \
-                ${OUT_DIR}/8.1_transfer_annotation/annotation_combined.gff
-                # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
+    # mask_region ${OUT_DIR}/10.1_test_masked_repeats \
+    #             ${OUT_DIR}/8_merged_genomes/assembly.fasta \
+    #             ${DATA_DIR}/in/mask_repeats/manual_mask.gff \
+    #             ${OUT_DIR}/8_merged_genomes/annotation.gff
+    #             # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
 
-    sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
+    # sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
 
-    cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
+    # cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
 
-    gap_spanning_reads ${OUT_DIR}/10.2_test_gap_spanning_reads \
-                    ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
-                    ${ONT_READS_IN} \
-                    ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+    # gap_spanning_reads ${OUT_DIR}/10.2_test_gap_spanning_reads \
+    #                 ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
+    #                 ${ONT_READS_IN} \
+    #                 ${DATA_DIR}/in/mask_repeats/manual_mask.gff
 
-    annotate_gaps ${OUT_DIR}/10.3_test_annotate_gaps \
-                ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
-                # -> ${OUT_DIR}/16_reannotated_gaps/gaps.gff3
+    # annotate_gaps ${OUT_DIR}/10.3_test_annotate_gaps \
+    #             ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
+    #             # -> ${OUT_DIR}/16_reannotated_gaps/gaps.gff3
 
     # align_reads_to_genome ${OUT_DIR}/10.4_test_align_reads \
     #     ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
@@ -215,7 +190,7 @@ main(){
     mask_region ${OUT_DIR}/15_masked_repeats \
                 ${OUT_DIR}/8_merged_genomes/assembly.fasta \
                 ${OUT_DIR}/13_identify_collapsed_regions/collapsed_regions.gff \
-                ${OUT_DIR}/8.1_transfer_annotation/annotation_combined.gff
+                ${OUT_DIR}/8_merged_genomes/annotation.gff
                 # -> ${OUT_DIR}/15_masked_repeats/masked.fasta
                 # -> ${OUT_DIR}/15_masked_repeats/annotations.gff
 
@@ -250,7 +225,8 @@ main(){
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
                 # -> ${OUT_DIR}/18.2_reannotated_gaps/gaps.gff3
 
-
+    # @fixme @continue_here some  filledgap annotations show up in the annotation_combined file
+    # these must be because the wrong annotation files are used somewhere
     transfer_annotation ${OUT_DIR}/19_transfer_annotation \
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                         ${OUT_DIR}/15_masked_repeats/annotations.gff \
@@ -473,7 +449,6 @@ mask_and_close(){
     MaC_GENOME=$2
     MaC_READS_IN=$3
     MaC_ORIGINAL_GFF_IN=$4
-    MaC_ORIGINAL_GENOME_IN=$5
 
     mkdir -p ${MaC_OUT_FOLDER}
 
@@ -949,6 +924,7 @@ split_genome_in_a_and_b(){
     OUT_FOLDER=$1
     GENOME_IN=$2
     READS_IN=$3
+    ANNOTATION_IN=$4
 
     mkdir -p ${OUT_FOLDER}
 
@@ -976,6 +952,10 @@ split_genome_in_a_and_b(){
                     | python3 remove_reads_mapping_to_contigs.py - ${OUT_FOLDER}/reads.sam ${OUT_FOLDER}/remainder.lst \
                     | gzip > ${OUT_FOLDER}/reads.B.fasta.gz
 
+        grep "A_${INPUT_CONTIG_SUFFIX}" ${ANNOTATION_IN} > ${OUT_FOLDER}/A.gff
+        grep "B_${INPUT_CONTIG_SUFFIX}" ${ANNOTATION_IN} > ${OUT_FOLDER}/B.gff
+        cat ${ANNOTATION_IN} | grep -v "A_${INPUT_CONTIG_SUFFIX}" | grep -v "B_${INPUT_CONTIG_SUFFIX}" > ${OUT_FOLDER}/remainder.gff
+
         echo "OK" > ${OUT_FOLDER}/split_genome_in_a_and_b.done
     fi
 }
@@ -988,6 +968,9 @@ merge_genomes(){
     GENOME_A=$2
     GENOME_B=$3
     GENOME_C=$4
+    GFF_A=$5
+    GFF_B=$6
+    GFF_C=$7
 
     mkdir -p ${OUT_FOLDER}
 
@@ -1000,13 +983,14 @@ merge_genomes(){
                       ${OUT_FOLDER}/assembly.fasta
                       # -> ${OUT_FOLDER}/annotation.gff
 
-        # grep -v "#" ${GFF_A} > ${OUT_FOLDER}/a.no#.gff
-        # grep -v "#" ${GFF_B} > ${OUT_FOLDER}/b.no#.gff
+        grep -v "#" ${GFF_A} > ${OUT_FOLDER}/a.no#.gff
+        grep -v "#" ${GFF_B} > ${OUT_FOLDER}/b.no#.gff
+        grep -v "#" ${GFF_C} > ${OUT_FOLDER}/c.no#.gff
 
-        # echo "##gff-version 3" > ${OUT_FOLDER}/annotation.gff
-        # faidx ${OUT_FOLDER}/assembly.fasta -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/annotation.gff
+        echo "##gff-version 3" > ${OUT_FOLDER}/annotation.gff
+        faidx ${OUT_FOLDER}/assembly.fasta -i chromsizes | awk '{OFS = "\t"; print "##sequence-region", $1, "1", $2}' >> ${OUT_FOLDER}/annotation.gff
 
-        # cat ${OUT_FOLDER}/a.no#.gff ${OUT_FOLDER}/b.no#.gff >> ${OUT_FOLDER}/annotation.gff
+        cat ${OUT_FOLDER}/a.no#.gff ${OUT_FOLDER}/b.no#.gff ${OUT_FOLDER}/c.no#.gff >> ${OUT_FOLDER}/annotation.gff
 
         echo "OK" > ${OUT_FOLDER}/merge_genomes.done
     fi

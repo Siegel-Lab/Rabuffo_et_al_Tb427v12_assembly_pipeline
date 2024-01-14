@@ -19,7 +19,7 @@ def main(gff_file):
                     prev_size = int(e.split("=")[1])
             start = int(start)
             end = int(end)
-            size = end - start
+            size = 1 + end - start
             print(contig, waht, start, idx, size-prev_size, sep="\t")
 
 if __name__ == "__main__":
