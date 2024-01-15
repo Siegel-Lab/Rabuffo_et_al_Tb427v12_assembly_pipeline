@@ -30,6 +30,9 @@ setup() {
     GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
     # ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.nanopore.gz)
     ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.large.nanopore.gz)
+    ORDER_IN_CORE_A=$(realpath ../data/in/order_in/Tb427v12_coreA_contigs_order.list)
+    ORDER_IN_DIPLOID=$(realpath ../data/in/order_in/Tb427v12_diploid_contigs_order.list)
+    ORDER_IN_SCAFFOLDED=$(realpath ../data/in/order_in/Tb427v12_scaffolded_contigs_order.list)
 
     INPUT_CONTIG_SUFFIX="Tb427v11"
     OUTPUT_CONTIG_SUFFIX="Tb427v12"
@@ -47,26 +50,14 @@ setup() {
 
 }
 
+#
+# @todo
+# - BES15 size in gff file is wrong
+# - 
+#
 
 main(){
     setup
-
-    # move the Centromere annotation from the assembly where the cores are merged to the fully phased assembly
-    # @todo this does not work with an exact match...
-    # move_annotation ${OUT_DIR}/1_move_centro_anno \
-    #                 "Centromere" \
-    #                 ${GFF_CENTRO_IN} \
-    #                 ${REF_CENTRO} \
-    #                 ${GENOME_FOLDER_IN}/${GENOME_FILENAME_IN}.fasta \
-    #                 ${GFF_IN_XXX}
-    #                 # -> ${OUT_DIR}/1_move_centro_anno/annotation_combined.gff
-
-    # transfer_manual_annotations ${OUT_DIR}/0_transfer_siegel_group_annotations_to_diploid_v11 \
-    #                       "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta" \
-    #                       "../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta" \
-    #                       "../data/in/genome_in/HGAP3_Tb427v11/HGAP3_Tb427v11_diploid_scaffolded.fasta" \
-    #                       "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3"
-
 
 
     remove_annotated_gaps ${OUT_DIR}/1_remove_gap_annotation \
@@ -225,8 +216,6 @@ main(){
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
                 # -> ${OUT_DIR}/18.2_reannotated_gaps/gaps.gff3
 
-    # @fixme @continue_here some  filledgap annotations show up in the annotation_combined file
-    # these must be because the wrong annotation files are used somewhere
     transfer_annotation ${OUT_DIR}/19_transfer_annotation \
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                         ${OUT_DIR}/15_masked_repeats/annotations.gff \
@@ -287,6 +276,7 @@ main(){
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
     collect_output_files ${OUT_DIR}/29_final_output
+    exit
 
 
     # here comes the analysis part !
@@ -337,14 +327,25 @@ collect_output_files(){
                                       ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/contigs.lst \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_A/core_${OUTPUT_CONTIG_SUFFIX}/g" \
-            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta
+            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp
+        
+        echo "" > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta
+        while read order_element; do
+            echo "${order_element}" > ${OUT_FOLDER}/order_element.tmp
+            ${BIN_DIR}/seqtk/seqtk subseq \
+                        ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp \
+                        ${OUT_FOLDER}/order_element.tmp \
+                >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta
+        done <${ORDER_IN_CORE_A}
 
+        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp
         rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/contigs.lst
 
         grep -v "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked\|core_${INPUT_CONTIG_SUFFIX}_B" \
                 ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_A/core_${OUTPUT_CONTIG_SUFFIX}/g" \
+            | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_CORE_A} \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.gff
 
 
@@ -353,11 +354,22 @@ collect_output_files(){
 
         cat ${OUT_DIR}/24_extract_haploid_genome/new_assembly.fasta \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
-            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta
+            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta.tmp
+
+        echo "" > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta
+        while read order_element; do
+            echo "${order_element}" > ${OUT_FOLDER}/order_element.tmp
+            ${BIN_DIR}/seqtk/seqtk subseq \
+                        ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta.tmp \
+                        ${OUT_FOLDER}/order_element.tmp \
+                >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta
+        done <${ORDER_IN_DIPLOID}
+        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.fasta.tmp
 
         grep -v "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked" \
                 ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
             | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
+            | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_DIPLOID} \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid/${OUTPUT_CONTIG_SUFFIX}_diploid.gff
 
 
@@ -366,10 +378,22 @@ collect_output_files(){
 
         cat ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
-           > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta
+           > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta.tmp
+           
+        echo "" > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta
+        while read order_element; do
+            echo "${order_element}" > ${OUT_FOLDER}/order_element.tmp
+            ${BIN_DIR}/seqtk/seqtk subseq \
+                        ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta.tmp \
+                        ${OUT_FOLDER}/order_element.tmp \
+                >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta
+        done <${ORDER_IN_DIPLOID}
+        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta.tmp
+        rm ${OUT_FOLDER}/order_element.tmp
 
         cat ${OUT_DIR}/19_transfer_annotation/annotation_combined.gff \
            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
+            | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_SCAFFOLDED} \
            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.gff
 
 

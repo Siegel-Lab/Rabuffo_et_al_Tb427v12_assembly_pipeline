@@ -2,7 +2,7 @@ import fileinput
 import sys
 
 
-def main(gff_file):
+def main(gff_file, expand_region_size=1000):
     print("#columns: contig, type, start, idx, size_change")
     with fileinput.input(gff_file) as in_file:
         for line in in_file:
@@ -19,7 +19,7 @@ def main(gff_file):
                     prev_size = int(e.split("=")[1])
             start = int(start)
             end = int(end)
-            size = 1 + end - start
+            size = 1 + end - start - 2*expand_region_size
             print(contig, waht, start, idx, size-prev_size, sep="\t")
 
 if __name__ == "__main__":
