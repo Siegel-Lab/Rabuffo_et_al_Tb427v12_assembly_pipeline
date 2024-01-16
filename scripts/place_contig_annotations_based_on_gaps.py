@@ -59,8 +59,9 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in, tb
                 start = min(start, contigs[name][0])
                 end = max(end, contigs[name][1])
                 if contigs[name][2] != contig:
-                    print("WARNING: contig ", name, "is annotated to both alleles of the fully phased reference",
+                    print("WARNING: contig ", name, "is annotated to both alleles of the fully phased reference. Picking allele A.",
                         file=sys.stderr)
+                    continue
             contigs[name] = [start, end, contig]
 
     for name, (start, end, contig) in contigs.items():
@@ -80,15 +81,19 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in, tb
                     assert end_gap is None
                     end_gap = idx
 
+            start_gap_type = "-/-"
             if start_gap is not None:
+                start_gap_type = new_gap_by_contig[contig][start_gap][2]
                 if new_gap_by_contig[contig][start_gap][2] != "gap":
-                    start = new_gap_by_contig[contig][start_gap][0] - overlap_region
+                    start = new_gap_by_contig[contig][start_gap][0] + overlap_region
                 else:
                     start = new_gap_by_contig[contig][start_gap][0]
             else:
                 start = 1
 
+            end_gap_type = "-/-"
             if end_gap is not None:
+                end_gap_type = new_gap_by_contig[contig][end_gap][2]
                 if new_gap_by_contig[contig][end_gap][2] != "gap":
                     end = new_gap_by_contig[contig][end_gap][0] + overlap_region - 1
                 else:
@@ -96,11 +101,17 @@ def place_contig_annotations_based_on_gaps(old_gaps, new_gaps_in, contigs_in, tb
             else:
                 end = contig_lengths[contig]
 
+            # exception for BES15
+            if name == "BES15_Tb427v11":
+                start = 2309280 - 91008
+            if name == "Chr3_3A_Tb427v11":
+                end = 2309280 - 91008
+
             if end <= start:
                 print("WARNING: contig ", name, "has negative length", file=sys.stderr)
             print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", start, end, ".", 
                   "+" if "_core_" + tb427Ver + "_A" in name or "_3A_" in name or "_5A_" in name else "-", 
-                  ".", "Name=" + name, sep="\t")
+                  ".", "Name=" + name + ";Position_Adjusted_by_Gaps=True;start_gap_id=" + str(start_gap) + ";end_gap_id=" + str(end_gap) + ";start_gap_type=" + start_gap_type + ";end_gap_type=" + end_gap_type , sep="\t")
         else:
             print(contig, ".", "contig_core" if "_core_" in name else "contig_subt", 1, contig_lengths[contig], ".", 
                   "+", ".", "Name=" + name + ";Position_Adjusted_by_Gaps=False", sep="\t")

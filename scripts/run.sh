@@ -34,13 +34,15 @@ setup() {
     ORDER_IN_DIPLOID=$(realpath ../data/in/order_in/Tb427v12_diploid_contigs_order.list)
     ORDER_IN_SCAFFOLDED=$(realpath ../data/in/order_in/Tb427v12_scaffolded_contigs_order.list)
 
+    COMPANINON_GFF_IN=$(realpath ../data/in/companion_in/Tb427v11_diploid_scaffolded.2024.01.16.gff3)
+
     INPUT_CONTIG_SUFFIX="Tb427v11"
     OUTPUT_CONTIG_SUFFIX="Tb427v12"
     
     BIN_DIR=$(realpath ../bin/)
     DATA_DIR=$(realpath ../data)
 
-    OUT_FOLDER="out_2_sth_strange_happened"
+    OUT_FOLDER="out"
 
     mkdir -p ${DATA_DIR}/${OUT_FOLDER}
     OUT_DIR=$(realpath ../data/${OUT_FOLDER})
@@ -52,8 +54,6 @@ setup() {
 
 #
 # @todo
-# - BES15 size in gff file is wrong
-# - 
 #
 
 main(){
@@ -260,12 +260,17 @@ main(){
             "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" \
             ${INPUT_CONTIG_SUFFIX}
             # -> ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
-    
+
+    extract_companion_annotation ${OUT_DIR}/23.1_extract_companion_annotation \
+                                 ${COMPANINON_GFF_IN} \
+                                 ${OUT_DIR}/20_transfer_fixed_regions/combined.transfered.gff \
+                                 ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
+                                 # -> ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
 
     extract_regions ${OUT_DIR}/24_extract_haploid_genome \
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                 ${OUT_DIR}/23_annotate_cores_and_subt/contig_and_subt.gff \
-                ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
+                ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
                 # -> ${OUT_DIR}/24_extract_haploid_genome/masked.fasta
                 # -> ${OUT_DIR}/24_extract_haploid_genome/annotation.gff
 
@@ -276,8 +281,6 @@ main(){
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
     collect_output_files ${OUT_DIR}/29_final_output
-    exit
-
 
     # here comes the analysis part !
 
@@ -387,7 +390,7 @@ collect_output_files(){
                         ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta.tmp \
                         ${OUT_FOLDER}/order_element.tmp \
                 >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta
-        done <${ORDER_IN_DIPLOID}
+        done <${ORDER_IN_SCAFFOLDED}
         rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta.tmp
         rm ${OUT_FOLDER}/order_element.tmp
 
@@ -398,6 +401,31 @@ collect_output_files(){
 
 
         echo "OK" > ${OUT_FOLDER}/collect_output_files.done
+    fi
+}
+
+extract_companion_annotation(){
+    OUT_FOLDER=$1
+    COMPANINON_GFF_IN=$2
+    CHANGED_REGIONS_IN=$3
+    GFF_TO_MERGE_WITH=$4
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/extract_companion_annotation.done ]; then
+        echo running extract_companion_annotation in ${OUT_FOLDER}
+
+        sed "s/${OUTPUT_CONTIG_SUFFIX}/${INPUT_CONTIG_SUFFIX}/g" ${COMPANINON_GFF_IN} | \
+            python3 extract_annotations.py \
+                - \
+                ${CHANGED_REGIONS_IN} \
+                ${GFF_TO_MERGE_WITH} \
+            > ${OUT_FOLDER}/annotation.companion.filtered.gff
+
+        cat ${GFF_TO_MERGE_WITH} ${OUT_FOLDER}/annotation.companion.filtered.gff \
+            > ${OUT_FOLDER}/annotation.gff
+
+        echo "OK" > ${OUT_FOLDER}/extract_companion_annotation.done
     fi
 }
 

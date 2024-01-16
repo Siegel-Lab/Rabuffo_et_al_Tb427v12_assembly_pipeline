@@ -53,8 +53,12 @@ def extract_region(genome_in, gff_in, annotation_in, annotation_out):
                         print("WARNING:", contig_name, name, "is shorter than expected. observed:", 
                               len(contig), "expected:", start, end, file=sys.stderr)
                         assert False
-                    for i in range(start, end, 80):
-                        print(contig[i:i+80])
+                    total_seq = ""
+                    for i in range(start-1, end, 80):
+                        seq = contig[i:min(end, i+80)]
+                        total_seq += seq
+                        print(seq)
+                    assert len(total_seq) == end - start + 1
         for contig_name, contig in iterate_contigs(genome_in):
             if contig_name in to_extract:
                 for start, end, name in to_extract[contig_name]:
