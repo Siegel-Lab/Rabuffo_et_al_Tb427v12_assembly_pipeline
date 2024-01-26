@@ -267,6 +267,18 @@ main(){
                                  ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
                                  # -> ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
 
+    transfer_annotation_to_scaffolded ${OUT_DIR}/23.2_transfer_annotation_to_scaffold \
+            "../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3" \
+            "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual_siegel.gff3"
+            # -> ${OUT_DIR}/23.2_transfer_annotation_to_scaffold/annotation.gff
+
+    transfer_annotation_via_match ${OUT_DIR}/23.3_transfer_annotation_via_match \
+                                  ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
+                                  ${OUT_DIR}/23.2_transfer_annotation_to_scaffold/annotation.gff \
+                                  "../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta" \
+                                  ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
+                                  # ->  ${OUT_DIR}/23.3_transfer_annotation_via_match/annotation_combined.gff
+
     extract_regions ${OUT_DIR}/24_extract_haploid_genome \
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                 ${OUT_DIR}/23_annotate_cores_and_subt/contig_and_subt.gff \
@@ -307,6 +319,7 @@ main(){
                           ${OUT_DIR}/27_analyze_gaps_closed_correctly/gaps_fixed.gff3 \
                           "gene no_data gap failed fixed" \
                           "gene=lightgrey;gap=purple;no_data=blue;failed=red;fixed=green"
+
 
 }
 
@@ -862,6 +875,64 @@ transfer_annotation(){
         fi
  
         echo "OK" > ${OUT_FOLDER}/transfer_annotation.done
+    fi
+}
+
+transfer_annotation_to_scaffolded(){
+    OUT_FOLDER=$1
+    GFF_IN=$2
+    GFF_TRANSFER=$3
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/transfer_annotation_to_scaffolded.done ]; then
+        echo running transfer_annotation_to_scaffolded in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/transfer_annotation_working_scaffolded.py \
+                ${GFF_TRANSFER} \
+                ${GFF_IN} \
+            > ${OUT_FOLDER}/annotation.gff
+ 
+        echo "OK" > ${OUT_FOLDER}/transfer_annotation_to_scaffolded.done
+    fi
+}
+
+
+
+# Output:
+# ${OUT_FOLDER}/annotation.transfered.gff
+# ${OUT_FOLDER}/annotation_combined.gff
+transfer_annotation_via_match(){
+    OUT_FOLDER=$1
+    ASSEMBLY_TRANSFER=$2
+    GFF_IN=$3
+    ASSEMBLY_IN=$4
+    GFF_TRANSFER=$5
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/transfer_annotation_via_match.done ]; then
+        echo running transfer_annotation_via_match in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+                ${ASSEMBLY_IN} \
+                ${ASSEMBLY_TRANSFER} \
+                ${GFF_IN} \
+                ${OUT_FOLDER}/annotation.failed.gff \
+            > ${OUT_FOLDER}/annotation.transfered.gff
+
+
+        echo "failed to transfer this many annotations:"
+        grep -v "#" ${OUT_FOLDER}/annotation.failed.gff | wc -l
+        echo ""
+
+        if [ ! -z "${GFF_TRANSFER}" ]
+        then
+            grep -v "#" ${GFF_TRANSFER} > ${OUT_FOLDER}/gff_transfer.no#.gff
+            cat ${OUT_FOLDER}/annotation.transfered.gff ${OUT_FOLDER}/gff_transfer.no#.gff > ${OUT_FOLDER}/annotation_combined.gff
+        fi
+ 
+        echo "OK" > ${OUT_FOLDER}/transfer_annotation_via_match.done
     fi
 }
 
