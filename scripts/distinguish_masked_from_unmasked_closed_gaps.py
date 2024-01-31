@@ -3,7 +3,7 @@ import sys
 from paste_old_sequence_into_remaining_gaps import load_masked
 
 
-def distinguish_masked_from_unmasked(gaps_before_closing, gaps_after_masking_undone, masked_in):
+def distinguish_masked_from_unmasked(gaps_before_closing, gaps_after_masking_undone, masked_in, reversed_masked_file):
     masked = load_masked(masked_in)
     old_gff = {}
     with fileinput.input(gaps_before_closing) as in_file:
@@ -16,6 +16,13 @@ def distinguish_masked_from_unmasked(gaps_before_closing, gaps_after_masking_und
                     idx = int(e.split("=")[1])
                     old_gff[idx] = (int(start), int(end))
                     break
+    reversed_masked = set()
+    with fileinput.input(reversed_masked_file) as in_file:
+        for line in in_file:
+            if line[0] == "#":
+                continue
+            contig, _, _, start, end, _, _, _, *extra = line.split("\t")
+            reversed_masked.add(contig + " " + start + " " + end)
 
     with fileinput.input(gaps_after_masking_undone) as in_file:
         for line in in_file:
@@ -36,7 +43,8 @@ def distinguish_masked_from_unmasked(gaps_before_closing, gaps_after_masking_und
                         if "previous_size" in e:
                             es[idx] = "previous_size=" + str(len(masked[key]))
                     extra = ";".join(es)
-                print(contig, x1, "filledmasked" if key in masked else "filledgap", start, end, x2, x3, x4, extra, 
+                print(contig, x1, ("reversedmasked" if key in reversed_masked else "filledmasked") \
+                                    if key in masked else "filledgap", start, end, x2, x3, x4, extra, 
                       sep="\t")
             else:
                 print(line[:-1])

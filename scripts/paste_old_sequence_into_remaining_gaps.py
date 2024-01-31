@@ -53,14 +53,14 @@ def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, mask
                 old_start, old_end = old_gff[idx]
                 if contig not in to_undo:
                     to_undo[contig] = []
-                to_undo[contig].append((int(start), int(end), contig + " " + str(old_start) + " " + str(old_end)))
+                to_undo[contig].append((int(start), int(end), contig + " " + str(old_start) + " " + str(old_end), old_start, old_end))
 
 
     with open(reversed_out, "w") as out_file:
         for contig_name, contig in iterate_contigs(genome_in):
             if contig_name in to_undo:
                 to_undo[contig_name].sort(reverse=True)
-                for start, end, key in to_undo[contig_name]:
+                for start, end, key, old_start, old_end in to_undo[contig_name]:
                     if key in masked:
                         paste_sequence = masked[key]
                         # print("pasting a", len(paste_sequence), "bp sequence into", contig_name, "at", start, "-", end, 
@@ -68,11 +68,8 @@ def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, mask
                         # print("replaced sequence:", contig[start:end], file=sys.stderr)
                         contig = contig[:start-1] + paste_sequence + contig[end:]
 
-                        offset_new_genome = sum([len(masked[key]) - (end - (start - 1)) \
-                                                    for start, end, key in to_undo[contig_name] if key in masked])
                         out_file.write("\t".join([contig_name, ".", "undone_masking", 
-                                                  str(start + offset_new_genome), 
-                                                  str(end + offset_new_genome), ".", ".", "."]) + "\n")
+                                                  str(old_start), str(old_end), ".", ".", "."]) + "\n")
                     else:
                         # print("could not find", contig_name, "at", start, "-", end, "in masked", file=sys.stderr)
                         pass

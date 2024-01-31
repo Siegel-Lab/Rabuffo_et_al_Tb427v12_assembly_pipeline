@@ -229,24 +229,11 @@ main(){
                          filledgap\|filledmasked;closedgap_a;${OUT_DIR}/6_closed_gaps_a/7.1_undo_failed_masking \
                          filledgap\|filledmasked;closedgap_b;${OUT_DIR}/7_closed_gaps_b/7.1_undo_failed_masking \
                          filledmasked;expanded_region;${OUT_DIR}/18.1_undo_failed_masking \
+                         reversedmasked;unexpanded_reg;${OUT_DIR}/18.1_undo_failed_masking \
                          filledgap;closedgap_masked;${OUT_DIR}/18.1_undo_failed_masking" \
                         ${OUT_DIR}/19_transfer_annotation/annotation_combined.gff \
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
                         # -> ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff
-
-    GREEN="#67909E"
-    BLUE="#3B3A68"
-    ORANGE="#9A6C8B"
-
-    generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
-                        ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff \
-                        "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region closedgap_masked gap" \
-                        "gene=lightgrey;closedgap_full=^:${GREEN};closedgap_a=^:${GREEN};closedgap_b=^:${GREEN};closedgap_masked=^:${GREEN};expanded_region=v:${BLUE};gap=^:${ORANGE}"
-
-    generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
-                        ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
-                        "gene" \
-                        "gene=lightgrey"
 
     gap_spanning_reads ${OUT_DIR}/22_vpr_new_genome \
                                  ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
@@ -261,6 +248,21 @@ main(){
             "#\|closedgap_full\|closedgap_a\|closedgap_b\|gap" \
             ${INPUT_CONTIG_SUFFIX}
             # -> ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
+
+    REPEAT_CLOSED="#709DAE"
+    REPEAT_OPEN="#E5AD50"
+    GAP_CLOSED="#6068A2"
+    GAP_OPEN="#A44758"
+
+    generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
+                        ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
+                        "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap contig_core contig_subt" \
+                        "gene=lightgrey;closedgap_full=^:${GAP_CLOSED};closedgap_a=^:${GAP_CLOSED};closedgap_b=^:${GAP_CLOSED};closedgap_masked=^:${GAP_CLOSED};expanded_region=v:${REPEAT_CLOSED};gap=^:${GAP_OPEN};unexpanded_reg=v:${REPEAT_OPEN};contig_core=-:black;contig_subt=-:grey"
+
+    generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
+                        ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
+                        "gene" \
+                        "gene=lightgrey"
 
     extract_companion_annotation ${OUT_DIR}/23.1_extract_companion_annotation \
                                  ${COMPANINON_GFF_IN} \
@@ -1316,6 +1318,7 @@ undo_masking(){
             ${GAPS_BEFORE_CLOSING} \
             ${OUT_FOLDER}/gaps.gff3 \
             ${MASKED_SEQUENCES} \
+            ${OUT_FOLDER}/undone_masking.gff \
             > ${OUT_FOLDER}/fixed_gaps_and_masked.gff3
 
         echo "OK" > ${OUT_FOLDER}/undo_masking.done

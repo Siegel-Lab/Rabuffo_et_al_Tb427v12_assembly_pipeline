@@ -19,9 +19,10 @@ def iterate_contigs(fasta_in):
 
 def load_contigs(fasta_in):
     contigs = {}
+    has_hap = False
     for contig_name, contig in iterate_contigs(fasta_in):
         ctg_suffix = contig_name.split("_")[-1]
-        has_hap = "hap" in contig_name
+        has_hap = has_hap or "hap" in contig_name
         contig_name = "_".join(contig_name.split("_")[:-1]).replace("hap", "")
         contigs[contig_name] = contig
     return contigs, ctg_suffix, has_hap

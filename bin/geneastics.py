@@ -405,6 +405,7 @@ class AnnoViz(object):
                 figure, replicon, subplot_index, width, grid_spec)
             subplot_index += 1
         #plt.tight_layout()
+        
         plt.savefig(self._output_file, transparent=True)
 #        plt.savefig(self._output_file)
 
@@ -429,6 +430,13 @@ class AnnoViz(object):
             ax.xaxis.set_ticks(np.arange(start, end, self._x_tick_distance))
             ax.tick_params(axis='x', which='both', labelbottom=False)
             ax.ticklabel_format(style='plain')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['top'].set_position('center')
+        ax.spines['bottom'].set_position('center')
+        ax.xaxis.set_ticks_position('both')
 
 
     def _generate_replicon_subplot_matplotlib_singlepage(
@@ -465,20 +473,26 @@ class AnnoViz(object):
                     marker, color = color.split(":")
                 else:
                     marker = None
-                rect = matplotlib.patches.Rectangle(
-                    (left, bottom), right-left, top-bottom, color=color,
-                    alpha=self._alpha)
-                ax.add_patch(rect)
-                if marker is not None:
-                    ax.plot((left + right) / 2, 0 if marker in "^d" else 10, 
-                            marker=align_marker(marker.replace("p", "d"), 
-                            valign='top' if marker in "^d" else "bottom"), 
-                            color=color, clip_on=False, markersize=10)
+                if marker == "-":
+                    rect = matplotlib.patches.Rectangle(
+                        (left, 4.975), right-left, 0.05, color=color,
+                        alpha=self._alpha)
+                    ax.add_patch(rect)
+                else:
+                    rect = matplotlib.patches.Rectangle(
+                        (left, bottom), right-left, top-bottom, color=color,
+                        alpha=self._alpha)
+                    ax.add_patch(rect)
+                    if marker is not None:
+                        ax.plot((left + right) / 2, -1 if marker in "^d" else 11, 
+                                marker=align_marker(marker.replace("p", "d"), 
+                                valign='top' if marker in "^d" else "bottom"), 
+                                color=color, clip_on=False, markersize=10)
         # Genome middle bar
-        bar = matplotlib.patches.Rectangle(
-            (0, 4.95), self._replicons_and_lengths[replicon], 0.05,
-            color="#000000")
-        ax.add_patch(bar)
+        # bar = matplotlib.patches.Rectangle(
+        #     (0, 4.975), self._replicons_and_lengths[replicon], 0.05,
+        #     color="#000000")
+        # ax.add_patch(bar)
         plt.xlim(0, self._replicons_and_lengths[replicon])
 
     def _viz_matplotlib_multipage(self):
