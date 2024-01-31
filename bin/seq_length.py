@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from Bio import SeqIO
 import sys
 cmdargs = str(sys.argv)

@@ -25,7 +25,7 @@ def load_masked(fasta_in):
     return ret
 
 
-def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, masked_in):
+def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, masked_in, reversed_out):
     masked = load_masked(masked_in)
     to_undo = {}
     old_gff = {}
@@ -55,22 +55,30 @@ def paste_old_sequences(genome_in, gaps_before_closing, gaps_after_closing, mask
                     to_undo[contig] = []
                 to_undo[contig].append((int(start), int(end), contig + " " + str(old_start) + " " + str(old_end)))
 
-    for contig_name, contig in iterate_contigs(genome_in):
-        if contig_name in to_undo:
-            to_undo[contig_name].sort(reverse=True)
-            for start, end, key in to_undo[contig_name]:
-                if key in masked:
-                    paste_sequence = masked[key]
-                    # print("pasting a", len(paste_sequence), "bp sequence into", contig_name, "at", start, "-", end, 
-                    #       file=sys.stderr)
-                    # print("replaced sequence:", contig[start:end], file=sys.stderr)
-                    contig = contig[:start-1] + paste_sequence + contig[end:]
-                else:
-                    # print("could not find", contig_name, "at", start, "-", end, "in masked", file=sys.stderr)
-                    pass
-        print(">" + contig_name)
-        for i in range(0, len(contig), 80):
-            print(contig[i:i+80])
+
+    with open(reversed_out, "w") as out_file:
+        for contig_name, contig in iterate_contigs(genome_in):
+            if contig_name in to_undo:
+                to_undo[contig_name].sort(reverse=True)
+                for start, end, key in to_undo[contig_name]:
+                    if key in masked:
+                        paste_sequence = masked[key]
+                        # print("pasting a", len(paste_sequence), "bp sequence into", contig_name, "at", start, "-", end, 
+                        #       file=sys.stderr)
+                        # print("replaced sequence:", contig[start:end], file=sys.stderr)
+                        contig = contig[:start-1] + paste_sequence + contig[end:]
+
+                        offset_new_genome = sum([len(masked[key]) - (end - (start - 1)) \
+                                                    for start, end, key in to_undo[contig_name] if key in masked])
+                        out_file.write("\t".join([contig_name, ".", "undone_masking", 
+                                                  str(start + offset_new_genome), 
+                                                  str(end + offset_new_genome), ".", ".", "."]) + "\n")
+                    else:
+                        # print("could not find", contig_name, "at", start, "-", end, "in masked", file=sys.stderr)
+                        pass
+            print(">" + contig_name)
+            for i in range(0, len(contig), 80):
+                print(contig[i:i+80])
 
 if __name__ == "__main__":
     paste_old_sequences(*sys.argv[1:])

@@ -18,6 +18,7 @@ setup() {
     module load ngs/samtools/1.9
     module load ngs/deeptools/3.5.0
     module load ngs/bedtools2/2.28.0
+    module load ncbi-blast/2.7.1+
 
     # GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
     # GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
@@ -233,9 +234,9 @@ main(){
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
                         # -> ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff
 
-    GREEN="#009e73"
-    BLUE="#0072b2"
-    ORANGE="#d55e00"
+    GREEN="#67909E"
+    BLUE="#3B3A68"
+    ORANGE="#9A6C8B"
 
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
                         ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff \
@@ -282,7 +283,8 @@ main(){
     extract_regions ${OUT_DIR}/24_extract_haploid_genome \
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                 ${OUT_DIR}/23_annotate_cores_and_subt/contig_and_subt.gff \
-                ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
+                ${OUT_DIR}/23.3_transfer_annotation_via_match/annotation_combined.gff
+                # OUTDATED: ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
                 # -> ${OUT_DIR}/24_extract_haploid_genome/masked.fasta
                 # -> ${OUT_DIR}/24_extract_haploid_genome/annotation.gff
 
@@ -914,12 +916,33 @@ transfer_annotation_via_match(){
     if [ ! -e ${OUT_FOLDER}/transfer_annotation_via_match.done ]; then
         echo running transfer_annotation_via_match in ${OUT_FOLDER}
 
-        python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
-                ${ASSEMBLY_IN} \
-                ${ASSEMBLY_TRANSFER} \
-                ${GFF_IN} \
-                ${OUT_FOLDER}/annotation.failed.gff \
-            > ${OUT_FOLDER}/annotation.transfered.gff
+        # python3 ${SCRIPTS_DIR}/transfer_annotation_exact_match.py \
+        #         ${ASSEMBLY_IN} \
+        #         ${ASSEMBLY_TRANSFER} \
+        #         ${GFF_IN} \
+        #         ${OUT_FOLDER}/annotation.failed.gff \
+        #     > ${OUT_FOLDER}/annotation.transfered.gff
+
+        faidx ${ASSEMBLY_IN} -i chromsizes > ${OUT_FOLDER}/genome.sizes
+
+        # Crop coordinates based on chromosome length
+
+        bedtools slop -i ${GFF_IN} -g ${OUT_FOLDER}/genome.sizes -b 0 > ${OUT_FOLDER}/slop.gff
+
+        ## Get fasta sequences for each entry and add it to the annotation file
+
+        bedtools getfasta -tab -fi ${ASSEMBLY_IN} -bed ${OUT_FOLDER}/slop.gff > ${OUT_FOLDER}/sequences.fasta
+
+        paste ${OUT_FOLDER}/slop.gff ${OUT_FOLDER}/sequences.fasta > ${OUT_FOLDER}/sequence_annotation.out
+
+        ## Run a modified version of Konrad's Förstner script to transfer annotation
+        conda deactivate
+        conda activate ont_assembly_2
+
+        python3 ${BIN_DIR}/map_annotation_via_string_match.py ${ASSEMBLY_TRANSFER} ${OUT_FOLDER}/sequence_annotation.out ${OUT_FOLDER} ${OUT_FOLDER}/annotation.transfered.gff
+
+        conda deactivate
+        conda activate ont_assembly
 
 
         echo "failed to transfer this many annotations:"
@@ -1279,6 +1302,7 @@ undo_masking(){
             ${GAPS_BEFORE_CLOSING} \
             ${GAPS_AFTER_CLOSING} \
             ${MASKED_SEQUENCES} \
+            ${OUT_FOLDER}/undone_masking.gff \
             > ${OUT_FOLDER}/masking_undone.fasta
 
         annotate_closed_gaps ${OUT_FOLDER} \
