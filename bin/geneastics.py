@@ -444,7 +444,7 @@ class AnnoViz(object):
             width, grid_spec):
         ax = plt.subplot(grid_spec[subplot_index-1, 0:max(width, 1)])
         self._replicon_subplot_matplotlib(replicon, ax)
-        ax.set_title(replicon, horizontalalignment="left", x=0)
+        ax.set_title(" ".join(replicon.split("_")[:-1]), horizontalalignment="left", x=0, pad=10)
         self._set_ticks(ax)
 
     def _generate_replicon_subplot_matplotlib_multipage(
@@ -475,7 +475,7 @@ class AnnoViz(object):
                     marker = None
                 if marker == "-":
                     rect = matplotlib.patches.Rectangle(
-                        (left, 4.975), right-left, 0.05, color=color,
+                        (left, 4.25), right-left, 1.5, color=color,
                         alpha=self._alpha)
                     ax.add_patch(rect)
                 else:

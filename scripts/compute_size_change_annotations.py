@@ -3,7 +3,7 @@ import sys
 
 
 def main(gff_file, expand_region_size=1000):
-    print("#columns: contig, type, start, idx, size_change")
+    print("#columns: contig, type, start, idx, size_change, size_before, size_after")
     with fileinput.input(gff_file) as in_file:
         for line in in_file:
             if line[0] == "#":
@@ -20,7 +20,7 @@ def main(gff_file, expand_region_size=1000):
             start = int(start)
             end = int(end)
             size = 1 + end - start - 2*expand_region_size
-            print(contig, waht, start, idx, size-prev_size, sep="\t")
+            print(contig, waht, start, idx, size-prev_size, prev_size + 2*expand_region_size, size + 2*expand_region_size, sep="\t")
 
 if __name__ == "__main__":
     main(*sys.argv[1:])

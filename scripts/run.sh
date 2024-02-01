@@ -249,15 +249,15 @@ main(){
             ${INPUT_CONTIG_SUFFIX}
             # -> ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
 
-    REPEAT_CLOSED="#709DAE"
-    REPEAT_OPEN="#E5AD50"
-    GAP_CLOSED="#6068A2"
-    GAP_OPEN="#A44758"
+    # REPEAT_CLOSED="#709DAE"
+    # REPEAT_OPEN="#E5AD50"
+    CLOSED="#6068A2"
+    OPEN="#A44758"
 
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
                         ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
-                        "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap contig_core contig_subt" \
-                        "gene=lightgrey;closedgap_full=^:${GAP_CLOSED};closedgap_a=^:${GAP_CLOSED};closedgap_b=^:${GAP_CLOSED};closedgap_masked=^:${GAP_CLOSED};expanded_region=v:${REPEAT_CLOSED};gap=^:${GAP_OPEN};unexpanded_reg=v:${REPEAT_OPEN};contig_core=-:black;contig_subt=-:grey"
+                        "gene contig_core contig_subt filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap" \
+                        "gene=lightgrey;closedgap_full=^:${CLOSED};closedgap_a=^:${CLOSED};closedgap_b=^:${CLOSED};closedgap_masked=^:${CLOSED};expanded_region=v:${CLOSED};gap=^:${OPEN};unexpanded_reg=v:${OPEN};contig_core=-:black;contig_subt=-:grey"
 
     generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
                         ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
