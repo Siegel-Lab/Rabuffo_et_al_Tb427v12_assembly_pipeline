@@ -282,21 +282,51 @@ main(){
                                   ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
                                   # ->  ${OUT_DIR}/23.3_transfer_annotation_via_match/annotation_combined.gff
 
+    call_ptus ${OUT_DIR}/23.4_call_ptus \
+              ${OUT_DIR}/23.3_transfer_annotation_via_match/annotation_combined.gff
+            # -> ${OUT_DIR}/23.4_call_ptus/annotation.gff
+                                  
+    generate_overview_pic ${OUT_DIR}/23.5_overview_TSS_v12 \
+                        ${OUT_DIR}/23.4_call_ptus/annotation.gff \
+                        "gene PTU dTSS sTSS cTTS sTTS" \
+                        "gene=lightgrey;dTSS=green;sTSS=green;cTTS=red;sTTS=red;PTU=yellow"
+
+    OUT_FOLDER=$1
+    ASSEMBLY_TRANSFER=$2
+    GFF_IN=$3
+    ASSEMBLY_IN=$4
+    GFF_TRANSFER=$5
+    transfer_annotation_via_match ${OUT_DIR}/23.6_transfer_annotation_via_match \
+                              "../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.fasta" \
+                              ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual_siegel.gff3 \
+                              "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta" \
+                              ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3
+                              # ->  ${OUT_DIR}/23.6_transfer_annotation_via_match/annotation_combined.gff
+    call_ptus ${OUT_DIR}/23.7_call_ptus \
+              ${OUT_DIR}/23.6_transfer_annotation_via_match/annotation_combined.gff
+    generate_overview_pic ${OUT_DIR}/23.8_overview_TSS_v10 \
+                        ${OUT_DIR}/23.7_call_ptus/annotation.gff \
+                        "gene PTU dTSS sTSS cTTS sTTS" \
+                        "gene=lightgrey;dTSS=green;sTSS=green;cTTS=red;sTTS=red;PTU=yellow"
+    generate_overview_pic ${OUT_DIR}/23.9_overview_TSS_v10_working \
+                        ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3 \
+                        "gene PTU dTSS sTSS cTTS sTTS" \
+                        "gene=lightgrey;dTSS=green;sTSS=green;cTTS=red;sTTS=red;PTU=yellow"
+
     extract_regions ${OUT_DIR}/24_extract_haploid_genome \
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                 ${OUT_DIR}/23_annotate_cores_and_subt/contig_and_subt.gff \
-                ${OUT_DIR}/23.3_transfer_annotation_via_match/annotation_combined.gff
+                ${OUT_DIR}/23.4_call_ptus/annotation.gff
                 # OUTDATED: ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
                 # -> ${OUT_DIR}/24_extract_haploid_genome/masked.fasta
                 # -> ${OUT_DIR}/24_extract_haploid_genome/annotation.gff
 
 
     generate_overview_pic ${OUT_DIR}/25_overview_of_final_assembly \
-                        ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
+                        ${OUT_DIR}/23.4_call_ptus/annotation.gff \
                         "gene filledgap closedgap_full closedgap_a closedgap_b expanded_region closedgap_masked gap" \
                         "gene=lightgrey;closedgap_full=green;closedgap_a=green;closedgap_b=green;closedgap_masked=green;expanded_region=blue;gap=purple"
 
-    collect_output_files ${OUT_DIR}/29_final_output
 
     # here comes the analysis part !
 
@@ -324,7 +354,27 @@ main(){
                           "gene no_data gap failed fixed" \
                           "gene=lightgrey;gap=purple;no_data=blue;failed=red;fixed=green"
 
+    collect_output_files ${OUT_DIR}/29_final_output
 
+}
+
+call_ptus(){
+    OUT_FOLDER=$1
+    GFF_FILE=$2
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/call_ptus.done ]; then
+        echo running call_ptus in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/call_PTUs.py \
+            ${GFF_FILE} \
+            > ${OUT_FOLDER}/ptus.gff
+
+        cat ${GFF_FILE} ${OUT_FOLDER}/ptus.gff > ${OUT_FOLDER}/annotation.gff
+
+        echo "OK" > ${OUT_FOLDER}/call_ptus.done
+    fi
 }
 
 collect_output_files(){
@@ -367,6 +417,7 @@ collect_output_files(){
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_A/core_${OUTPUT_CONTIG_SUFFIX}/g" \
             | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_CORE_A} \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.gff
+        cat '../data/in/centromere_in/centromere.gff' >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.gff
 
 
         # all contigs
@@ -411,7 +462,7 @@ collect_output_files(){
         rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.fasta.tmp
         rm ${OUT_FOLDER}/order_element.tmp
 
-        cat ${OUT_DIR}/19_transfer_annotation/annotation_combined.gff \
+        cat ${OUT_DIR}/23.4_call_ptus/annotation.gff \
            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
             | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_SCAFFOLDED} \
            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded/${OUTPUT_CONTIG_SUFFIX}_diploid_scaffolded.gff
@@ -947,14 +998,15 @@ transfer_annotation_via_match(){
         conda activate ont_assembly
 
 
-        echo "failed to transfer this many annotations:"
-        grep -v "#" ${OUT_FOLDER}/annotation.failed.gff | wc -l
-        echo ""
+        # echo "failed to transfer this many annotations:"
+        # grep -v "#" ${OUT_FOLDER}/annotation.failed.gff | wc -l
+        # echo ""
 
         if [ ! -z "${GFF_TRANSFER}" ]
         then
             grep -v "#" ${GFF_TRANSFER} > ${OUT_FOLDER}/gff_transfer.no#.gff
-            cat ${OUT_FOLDER}/annotation.transfered.gff ${OUT_FOLDER}/gff_transfer.no#.gff > ${OUT_FOLDER}/annotation_combined.gff
+            grep "#" ${GFF_TRANSFER} > ${OUT_FOLDER}/gff_transfer.#.gff
+            cat ${OUT_FOLDER}/gff_transfer.#.gff ${OUT_FOLDER}/annotation.transfered.gff ${OUT_FOLDER}/gff_transfer.no#.gff > ${OUT_FOLDER}/annotation_combined.gff
         fi
  
         echo "OK" > ${OUT_FOLDER}/transfer_annotation_via_match.done

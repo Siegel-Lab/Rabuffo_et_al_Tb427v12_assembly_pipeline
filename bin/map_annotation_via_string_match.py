@@ -84,19 +84,21 @@ def search_by_blast(ref_seq, query_seq, seq_id_query, seq_id_ref,
                             "file {}\n".format(seq_id_query, seq_id_ref,
                                                 blast_output_file))
             sys.exit(2)
+        print(alignment.hsps[0].sbjct_start, alignment.hsps[0].sbjct_end, alignment.hsps[0].strand, file=sys.stderr)
         return alignment.hsps[0].sbjct_start, alignment.hsps[0].sbjct_end
     else:
         return None, None
     
-NEXT_AVAILABLE_ID = 0
+#NEXT_AVAILABLE_ID = 0
 def _write_entry(row, start_pos, end_pos, new_replicon_name, output_fh):
-    global NEXT_AVAILABLE_ID
+    #global NEXT_AVAILABLE_ID
     row = row[:9]
     row[0] = new_replicon_name
-    row[3] = str(start_pos)
-    row[4] = str(end_pos)
-    row[8] = "ID=" + new_replicon_name + "_" + str(NEXT_AVAILABLE_ID)
-    NEXT_AVAILABLE_ID += 1
+    # assert end_pos > start_pos
+    row[3] = str(min(start_pos, end_pos))
+    row[4] = str(max(start_pos, end_pos))
+    #row[8] = "ID=" + new_replicon_name + "_" + str(NEXT_AVAILABLE_ID)
+    #NEXT_AVAILABLE_ID += 1
     output_fh.write("\t".join(row) + "\n")
     
 
