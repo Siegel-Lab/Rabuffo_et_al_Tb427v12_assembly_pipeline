@@ -235,10 +235,20 @@ main(){
                         ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
                         # -> ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff
 
+    transfer_fixed_regions ${OUT_DIR}/20.1_transfer_only_fixed_regions \
+                        "filledgap\|filledmasked;closedgap_full;${OUT_DIR}/4_close_gaps_full_genome/7.1_undo_failed_masking \
+                         filledgap\|filledmasked;closedgap_a;${OUT_DIR}/6_closed_gaps_a/7.1_undo_failed_masking \
+                         filledgap\|filledmasked;closedgap_b;${OUT_DIR}/7_closed_gaps_b/7.1_undo_failed_masking \
+                         filledmasked;expanded_region;${OUT_DIR}/18.1_undo_failed_masking \
+                         filledgap;closedgap_masked;${OUT_DIR}/18.1_undo_failed_masking" \
+                        ${OUT_DIR}/19_transfer_annotation/annotation_combined.gff \
+                        ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta
+                        # -> ${OUT_DIR}/20_transfer_fixed_regions/annotation_combined.gff
+
     gap_spanning_reads ${OUT_DIR}/22_vpr_new_genome \
                                  ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                                  ${ONT_READS_IN} \
-                                 ${OUT_DIR}/20_transfer_fixed_regions/combined.transfered.gff
+                                 ${OUT_DIR}/21_transfer_only_fixed_regions/combined.transfered.gff
                                  # -> ${OUT_DIR}/22_vpr_new_genome/distance_deviation.tsv
 
     annotate_cores_and_subtelomeric_contigs ${OUT_DIR}/23_annotate_cores_and_subt \
@@ -249,7 +259,7 @@ main(){
             ${INPUT_CONTIG_SUFFIX}
             # -> ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
 
-    # REPEAT_CLOSED="#709DAE"
+    # REPEAT_CLOSED="#709DAE"s
     # REPEAT_OPEN="#E5AD50"
     CLOSED="#6068A2"
     OPEN="#A44758"
