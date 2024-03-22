@@ -248,7 +248,7 @@ main(){
     gap_spanning_reads ${OUT_DIR}/22_vpr_new_genome \
                                  ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                                  ${ONT_READS_IN} \
-                                 ${OUT_DIR}/21_transfer_only_fixed_regions/combined.transfered.gff
+                                 ${OUT_DIR}/20.1_transfer_only_fixed_regions/combined.transfered.gff
                                  # -> ${OUT_DIR}/22_vpr_new_genome/distance_deviation.tsv
 
     annotate_cores_and_subtelomeric_contigs ${OUT_DIR}/23_annotate_cores_and_subt \
@@ -264,10 +264,11 @@ main(){
     CLOSED="#6068A2"
     OPEN="#A44758"
 
+
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
                         ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
-                        "gene contig_core contig_subt filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap" \
-                        "gene=lightgrey;closedgap_full=^:${CLOSED};closedgap_a=^:${CLOSED};closedgap_b=^:${CLOSED};closedgap_masked=^:${CLOSED};expanded_region=v:${CLOSED};gap=^:${OPEN};unexpanded_reg=v:${OPEN};contig_core=-:black;contig_subt=-:grey"
+                        "mRNA polypeptide protein_match pseudogene contig_core contig_subt filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap" \
+                        "polypeptide=None;protein_match=None;pseudogene=None;mRNA=lightgrey;closedgap_full=^:${CLOSED};closedgap_a=^:${CLOSED};closedgap_b=^:${CLOSED};closedgap_masked=^:${CLOSED};expanded_region=^:${CLOSED};gap=^:${OPEN};unexpanded_reg=^:${OPEN};contig_core=-:lightgrey;contig_subt=-:grey"
 
     generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
                         ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
@@ -365,6 +366,9 @@ main(){
                           "gene=lightgrey;gap=purple;no_data=blue;failed=red;fixed=green"
 
     collect_output_files ${OUT_DIR}/29_final_output
+
+    check_t_to_t ${OUT_DIR}/30_t_to_t \
+        ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.fasta
 
 }
 
@@ -1039,16 +1043,18 @@ generate_overview_pic(){
         CONTIGS_WITH_GAPS=$(grep "##sequence-region" ${GFF_IN} | grep "Chr\|BES" | awk '{print $2}' | sort | uniq)
         # echo CONTIGS_WITH_GAPS: ${CONTIGS_WITH_GAPS}
 
-        awk '{print $1, $2, $3, $4, $5, $6, $7, $8}' OFS='\t' ${GFF_IN} > ${OUT_FOLDER}/gff_last_column_removed.gff
+        # awk '{print $1, $2, $3, $4, $5, $6, $7, $8}' OFS='\t' ${GFF_IN} > ${OUT_FOLDER}/gff_last_column_removed.gff
+        python3 ${SCRIPTS_DIR}/gff_remove_id.py ${GFF_IN} > ${OUT_FOLDER}/gff_last_column_removed.gff
 
         conda deactivate
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
-            --gff_file ${OUT_FOLDER}/gff_last_column_removed.gff \
+            --gff_file  ${OUT_FOLDER}/gff_last_column_removed.gff \
             --feature_types ${FEATURES} \
             --alpha 0.99 \
             --feature_color_mapping ${FEATURE_COLORS} \
+            --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|#B2B2B2|||Name|Similar to Tb427VSG|#B2B2B2|||product|Trypanosomal VSG|#B2B2B2' \
             --x_tick_distance 500000 \
             --font_size 1 \
             --output_file ${OUT_FOLDER}/overview.svg
@@ -1542,6 +1548,24 @@ analyze_error_rates(){
         done < ${OUT_FOLDER}/binned_genome.tsv
 
         echo "OK" > ${OUT_FOLDER}/analyze_error_rates.done
+    fi
+}
+
+
+check_t_to_t(){
+    OUT_FOLDER=$1
+    ASSEMBLY=$2
+
+    mkdir -p ${OUT_FOLDER}
+
+    if [ ! -e ${OUT_FOLDER}/check_t_to_t.done ]; then
+        echo running check_t_to_t in ${OUT_FOLDER}
+
+        python3 ${SCRIPTS_DIR}/identify_telomeric_repreats.py \
+                ${ASSEMBLY} \
+            > ${OUT_FOLDER}/telomeric_trpeats.tsv
+
+        echo "OK" > ${OUT_FOLDER}/check_t_to_t.done
     fi
 }
 

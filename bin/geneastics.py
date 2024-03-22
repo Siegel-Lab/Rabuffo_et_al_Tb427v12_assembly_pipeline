@@ -461,6 +461,7 @@ class AnnoViz(object):
                     max(self._annotation_glyphs_by_replicon[replicon]["right"]))
             plt.ylim(min(self._annotation_glyphs_by_replicon[replicon]["bottom"]),
                     max(self._annotation_glyphs_by_replicon[replicon]["top"]))
+            # plt.ylim(-12.5, 22.5)
             ax.axes.get_yaxis().set_visible(False)
             ax.axes.get_yaxis().set_ticks([])
             for left, bottom, right, top, color in zip(
@@ -474,25 +475,35 @@ class AnnoViz(object):
                 else:
                     marker = None
                 if marker == "-":
-                    rect = matplotlib.patches.Rectangle(
-                        (left, 4.25), right-left, 1.5, color=color,
-                        alpha=self._alpha)
-                    ax.add_patch(rect)
+                    if "hapA" in replicon:
+                        rect = matplotlib.patches.Rectangle(
+                            (left, -3.5), right-left, 1.5, color=color, clip_on=False)
+                        ax.add_patch(rect)
+                    else:
+                        rect = matplotlib.patches.Rectangle(
+                            (left, 12), right-left, 1.5, color=color, clip_on=False)
+                        ax.add_patch(rect)
                 else:
                     rect = matplotlib.patches.Rectangle(
                         (left, bottom), right-left, top-bottom, color=color,
                         alpha=self._alpha)
                     ax.add_patch(rect)
                     if marker is not None:
-                        ax.plot((left + right) / 2, -1 if marker in "^d" else 11, 
-                                marker=align_marker(marker.replace("p", "d"), 
-                                valign='top' if marker in "^d" else "bottom"), 
-                                color=color, clip_on=False, markersize=10)
+                        if "hapA" in replicon:
+                            ax.plot((left + right) / 2, 11, 
+                                    marker=align_marker(marker.replace("^", "v"), 
+                                    valign="bottom"), 
+                                    color=color, clip_on=False, markersize=10)
+                        else:
+                            ax.plot((left + right) / 2, -1, 
+                                    marker=align_marker(marker, 
+                                    valign='top'), 
+                                    color=color, clip_on=False, markersize=10)
         # Genome middle bar
-        # bar = matplotlib.patches.Rectangle(
-        #     (0, 4.975), self._replicons_and_lengths[replicon], 0.05,
-        #     color="#000000")
-        # ax.add_patch(bar)
+        bar = matplotlib.patches.Rectangle(
+            (0, 4.975), self._replicons_and_lengths[replicon], 0.05,
+            color="#000000")
+        ax.add_patch(bar)
         plt.xlim(0, self._replicons_and_lengths[replicon])
 
     def _viz_matplotlib_multipage(self):
