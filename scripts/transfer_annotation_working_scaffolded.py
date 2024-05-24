@@ -27,11 +27,18 @@ def transfer_annotation_working_scaffold(to_transfer, anno_scaffolded):
     contig_translations = {}
     with fileinput.input(anno_scaffolded) as in_file:
         for line in in_file:
-            if line[0] == "#":
+            if line[0] == "#" or len(line) <= 1:
                 continue
-            ctg, a, anno_type, start, e, b, c, d, extra = line.strip().split("\t")
+            cols = line.strip().split("\t")
+            if len(cols) == 9:
+                ctg, a, anno_type, start, e, b, c, d, extra = cols
+            elif len(cols) == 8:
+                ctg, a, anno_type, start, e, b, c, d = cols
+                extra = ""
+            else:
+                raise RuntimeError("Unknown format " + str(len(cols)) + " " + line)
             name=None
-            if anno_type == "contig":
+            if "contig" in anno_type:
                 for n in extra.split(";"):
                     if "Name=" in n:
                         name = n.split("=")[1]
@@ -40,7 +47,7 @@ def transfer_annotation_working_scaffold(to_transfer, anno_scaffolded):
                     print("no name", line, file=sys.stderr)
                     assert name != None
                 # print(ctg, name, file=sys.stderr)
-                if "_B_" in name and "core" in name:
+                if "_B" in name and "core" in name:
                     continue
                 name = "_".join(name.split("_")[:3])
                 if name in contig_translations:

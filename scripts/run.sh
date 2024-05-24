@@ -267,8 +267,8 @@ main(){
 
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
                         ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
-                        "mRNA polypeptide protein_match pseudogene contig_core contig_subt filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap" \
-                        "polypeptide=None;protein_match=None;pseudogene=None;mRNA=lightgrey;closedgap_full=^:${CLOSED};closedgap_a=^:${CLOSED};closedgap_b=^:${CLOSED};closedgap_masked=^:${CLOSED};expanded_region=^:${CLOSED};gap=^:${OPEN};unexpanded_reg=^:${OPEN};contig_core=-:lightgrey;contig_subt=-:grey"
+                        "mRNA polypeptide protein_match pseudogene contig_core contig_subt filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap Centromere rRNA tRNA" \
+                        "Centromere=yellow;rRNA=red;tRNA=green;polypeptide=None;protein_match=None;pseudogene=None;mRNA=lightgrey;closedgap_full=^:${CLOSED};closedgap_a=^:${CLOSED};closedgap_b=^:${CLOSED};closedgap_masked=^:${CLOSED};expanded_region=^:${CLOSED};gap=^:${OPEN};unexpanded_reg=^:${OPEN};contig_core=-:lightgrey;contig_subt=-:grey"
 
     generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
                         ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
@@ -301,6 +301,8 @@ main(){
                         ${OUT_DIR}/23.4_call_ptus/annotation.gff \
                         "gene PTU dTSS sTSS cTTS sTTS" \
                         "gene=lightgrey;dTSS=green;sTSS=green;cTTS=red;sTTS=red;PTU=yellow"
+
+                        
 
     OUT_FOLDER=$1
     ASSEMBLY_TRANSFER=$2
@@ -370,6 +372,45 @@ main(){
     check_t_to_t ${OUT_DIR}/30_t_to_t \
         ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.fasta
 
+
+    # @todo make the below a function!!!
+
+    # transfer_annotation_to_scaffolded ${OUT_DIR}/31_centro_anno_transfer \
+    #         ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.gff \
+    #         '../data/in/centromere_in/centromere_pre_post.gff'
+    #         # -> ${OUT_DIR}/31_centro_anno_transfer/annotation.gff
+
+    transfer_annotation_to_scaffolded ${OUT_DIR}/31.2_centro_anno_transfer \
+            ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.gff \
+            '../data/in/centromere_in/centromere.gff'
+            # -> ${OUT_DIR}/31_centro_anno_transfer/annotation.gff
+
+        
+    # faidx ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.fasta -i chromsizes > ${OUT_DIR}/31_centro_anno_transfer/genome.sizes
+
+    # # Crop coordinates based on chromosome length
+
+    # bedtools slop -i ${OUT_DIR}/31_centro_anno_transfer/annotation.gff -g ${OUT_DIR}/31_centro_anno_transfer/genome.sizes -b 0 > ${OUT_DIR}/31_centro_anno_transfer/slop.gff
+
+    # ## Get fasta sequences for each entry and add it to the annotation file
+
+    # bedtools getfasta -tab -fi ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.fasta -bed ${OUT_DIR}/31_centro_anno_transfer/slop.gff > ${OUT_DIR}/31_centro_anno_transfer/sequences.fasta
+
+    # sed -i -e 's/Chr/>Chr/g' ${OUT_DIR}/31_centro_anno_transfer/sequences.fasta
+    # sed -i -e 's/\t/\n/g' ${OUT_DIR}/31_centro_anno_transfer/sequences.fasta
+
+    
+    # mask_region ${OUT_DIR}/32_masked_centro_A \
+    #             ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.fasta \
+    #             ${OUT_DIR}/31_centro_anno_transfer/annotation.gff \
+    #             ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.gff
+    #             # -> ${OUT_DIR}/32_masked_centro_A/masked.fasta
+    #             # -> ${OUT_DIR}/32_masked_centro_A/annotations.gff
+
+    # minimap2 -t 8 -x asm5 ${OUT_DIR}/32_masked_centro_A/masked.fasta ${OUT_DIR}/31_centro_anno_transfer/sequences.fasta > ${OUT_DIR}/31_centro_anno_transfer/alignments.paf
+
+    # @todo run after fixing centro annos:
+    # py ../scripts/overlapping_annotation.py ../data/out/21_overview_of_remaining_gaps/gff_last_column_removed_2.gff Centromere,rRNA,tRNA contig_subt,contig_core,unitig,gap,closedgap_full,closedgap_core,closedgap_a,closedgap_b,closedgap_masked,expanded_region,unexpanded_reg 10000
 }
 
 call_ptus(){
@@ -1050,7 +1091,7 @@ generate_overview_pic(){
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
-            --gff_file  ${OUT_FOLDER}/gff_last_column_removed.gff \
+            --gff_file  ${OUT_FOLDER}/gff_last_column_removed_2.gff \
             --feature_types ${FEATURES} \
             --alpha 0.99 \
             --feature_color_mapping ${FEATURE_COLORS} \
