@@ -470,8 +470,12 @@ class AnnoViz(object):
                     self._annotation_glyphs_by_replicon[replicon]["right"],
                     self._annotation_glyphs_by_replicon[replicon]["top"],
                     self._annotation_glyphs_by_replicon[replicon]["color"]):
+                do_rectangle = True
                 if color[1] == ":":
                     marker, color = color.split(":")
+                    if color[0] == "-":
+                        color = color[1:]
+                        do_rectangle = False
                 else:
                     marker = None
                 if marker == "-":
@@ -484,21 +488,34 @@ class AnnoViz(object):
                             (left, 12), right-left, 1.5, color=color, clip_on=False)
                         ax.add_patch(rect)
                 else:
-                    rect = matplotlib.patches.Rectangle(
-                        (left, bottom), right-left, top-bottom, color=color,
-                        alpha=self._alpha)
-                    ax.add_patch(rect)
+                    if do_rectangle:
+                        rect = matplotlib.patches.Rectangle(
+                            (left, bottom), right-left, top-bottom, color=color,
+                            alpha=self._alpha)
+                        ax.add_patch(rect)
                     if marker is not None:
-                        if "hapA" in replicon:
-                            ax.plot((left + right) / 2, 11, 
-                                    marker=align_marker(marker.replace("^", "v"), 
-                                    valign="bottom"), 
-                                    color=color, clip_on=False, markersize=10)
+                        if marker == "o":
+                                ax.plot((left + right) / 2, 5, 
+                                        marker=align_marker(marker, valign="middle"), 
+                                        color=color, clip_on=False, markersize=3)
+                        elif marker == "|":
+                                ax.plot(left, 5, 
+                                        marker=align_marker(marker, valign="middle"), 
+                                        color=color, clip_on=False, markersize=7)
+                                ax.plot(right, 5, 
+                                        marker=align_marker(marker, valign="middle"), 
+                                        color=color, clip_on=False, markersize=7)
                         else:
-                            ax.plot((left + right) / 2, -1, 
-                                    marker=align_marker(marker, 
-                                    valign='top'), 
-                                    color=color, clip_on=False, markersize=10)
+                            if "hapA" in replicon:
+                                ax.plot((left + right) / 2, 11, 
+                                        marker=align_marker(marker.replace("^", "v"), 
+                                        valign="bottom"), 
+                                        color=color, clip_on=False, markersize=10)
+                            else:
+                                ax.plot((left + right) / 2, -1, 
+                                        marker=align_marker(marker, 
+                                        valign='top'), 
+                                        color=color, clip_on=False, markersize=10)
         # Genome middle bar
         bar = matplotlib.patches.Rectangle(
             (0, 4.975), self._replicons_and_lengths[replicon], 0.05,

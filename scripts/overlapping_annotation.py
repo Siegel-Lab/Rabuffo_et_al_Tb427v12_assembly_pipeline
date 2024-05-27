@@ -55,7 +55,7 @@ for from_anno, l in from_anno_list.items():
         print(overlap, end="\t")
     print(len(l))
 
-    
+
 
 
 # py ../scripts/overlapping_annotation.py ../data/out/21_overview_of_remaining_gaps/gff_last_column_removed_2.gff Centromere,rRNA,tRNA contig_subt,contig_core,unitig,gap,closedgap_full,closedgap_core,closedgap_a,closedgap_b,closedgap_masked,expanded_region,unexpanded_reg 10000
@@ -63,7 +63,7 @@ for from_anno, l in from_anno_list.items():
 #   gap     closedgap_full  closedgap_a     closedgap_b     expanded_region unexpanded_reg  closedgap_masked        contig_subt     contig_core     unitig  total
 #rRNA            0       34      20      0       0       0       0       12      64      44      120
 #tRNA            0       0       0       0       3       7       0       1       130     0       131
-#Centromere      5       10      0       0       0       0       1       5       16      0       21
+#Centromere      5       9       0       0       0       0       1       4       16      0       20
 
 
 
@@ -71,5 +71,5 @@ for from_anno, l in from_anno_list.items():
 #            open_gap  closed_gap  collapsed_repeat  fixed_repeat  contig_subt  contig_core  unitig  total
 #rRNA        0         54          0                 0             12           64           44      120
 #tRNA        0         0           7                 3             1            130          0       131
-#Centromere  5         10          0                 0             5            16           0       21
+#Centromere  5         9           0                 0             4            16           0       20
 #improvement:          ^^^^^^^^^^                    ^^^^^^^^^^^^

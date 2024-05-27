@@ -264,11 +264,14 @@ main(){
     CLOSED="#6068A2"
     OPEN="#A44758"
 
+    TRNAC="#E5AD50"
+    RRNAC="#709DAE"
+
 
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
                         ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
-                        "mRNA polypeptide protein_match pseudogene contig_core contig_subt filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap Centromere rRNA tRNA" \
-                        "Centromere=yellow;rRNA=red;tRNA=green;polypeptide=None;protein_match=None;pseudogene=None;mRNA=lightgrey;closedgap_full=^:${CLOSED};closedgap_a=^:${CLOSED};closedgap_b=^:${CLOSED};closedgap_masked=^:${CLOSED};expanded_region=^:${CLOSED};gap=^:${OPEN};unexpanded_reg=^:${OPEN};contig_core=-:lightgrey;contig_subt=-:grey"
+                        "mRNA polypeptide protein_match pseudogene filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap Centromere rRNA tRNA contig_core" \
+                        "Centromere=o:-black;rRNA=${RRNAC};tRNA=${TRNAC};polypeptide=None;protein_match=None;pseudogene=None;mRNA=lightgrey;closedgap_full=${CLOSED};closedgap_a=${CLOSED};closedgap_b=${CLOSED};closedgap_masked=${CLOSED};expanded_region=${CLOSED};gap=${OPEN};unexpanded_reg=${OPEN};contig_core=|:-black"
 
     generate_overview_pic ${OUT_DIR}/21.1_overview_of_untransferred_annotations \
                         ${OUT_DIR}/19_transfer_annotation/annotation.failed.gff \
@@ -1096,9 +1099,10 @@ generate_overview_pic(){
             --alpha 0.99 \
             --feature_color_mapping ${FEATURE_COLORS} \
             --attribute_color_mapping 'signature_desc|Trypanosomal VSG domain|#B2B2B2|||Name|Similar to Tb427VSG|#B2B2B2|||product|Trypanosomal VSG|#B2B2B2' \
-            --x_tick_distance 500000 \
+            --x_tick_distance -1 \
             --font_size 1 \
             --output_file ${OUT_FOLDER}/overview.svg
+            # --x_tick_distance 500000 \
         conda deactivate
         conda activate ont_assembly
 
