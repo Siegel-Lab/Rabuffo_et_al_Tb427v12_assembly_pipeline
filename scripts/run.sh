@@ -476,6 +476,40 @@ collect_output_files(){
             | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_CORE_A} \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.gff
         cat '../data/in/centromere_in/centromere.gff' >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreA/${OUTPUT_CONTIG_SUFFIX}.gff
+        
+        # core_B and subtelomeres together regions
+        mkdir -p ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB
+
+        grep ">" ${OUT_DIR}/24_extract_haploid_genome/new_assembly.fasta \
+            | grep -v "core_${INPUT_CONTIG_SUFFIX}_A" \
+            | awk '{print substr($1,2)}' \
+            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/contigs.lst
+
+        ${BIN_DIR}/seqtk/seqtk subseq ${OUT_DIR}/24_extract_haploid_genome/new_assembly.fasta \
+                                      ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/contigs.lst \
+            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
+            | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_B/core_${OUTPUT_CONTIG_SUFFIX}/g" \
+            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp
+        
+        echo "" > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta
+        while read order_element; do
+            echo "${order_element}" > ${OUT_FOLDER}/order_element.tmp
+            ${BIN_DIR}/seqtk/seqtk subseq \
+                        ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp \
+                        ${OUT_FOLDER}/order_element.tmp \
+                >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta
+        done <${ORDER_IN_CORE_A}
+
+        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp
+        rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/contigs.lst
+
+        grep -v "filledgap\|closedgap_full\|closedgap_a\|closedgap_b\|expanded_region\|closedgap_masked\|core_${INPUT_CONTIG_SUFFIX}_A" \
+                ${OUT_DIR}/24_extract_haploid_genome/annotation.gff \
+            | sed "s/${INPUT_CONTIG_SUFFIX}/${OUTPUT_CONTIG_SUFFIX}/g" \
+            | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_B/core_${OUTPUT_CONTIG_SUFFIX}/g" \
+            | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_CORE_A} \
+            > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.gff
+        cat '../data/in/centromere_in/centromere.gff' >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.gff
 
 
         # all contigs
