@@ -84,7 +84,8 @@ def filter_reads(fixed_names, fixed_dev, gap_spanning_reads, ref_dict, fixed_dic
 def analyze_gaps_closed_correctly(dist_dev_ref_file, dist_dev_fixed_file, gap_spanning_reads_file, gaps_new_genome, 
                                   gap_closed_if_fixed_dev_smaller_than=5000,
                                   max_ref_fixed_diff = 10, max_ref_fixed_sum = 1000, min_map_q=30,
-                                  min_reads_in_cluster=5):
+                                  min_reads_in_cluster=2 # @todo change back to 5, 2 is just a test
+                            ):
     ref_names, ref_dev = load_dist_dev(dist_dev_ref_file)
     fixed_names, fixed_dev = load_dist_dev(dist_dev_fixed_file)
     gap_spanning_reads = load_gap_spanning_reads(gap_spanning_reads_file)

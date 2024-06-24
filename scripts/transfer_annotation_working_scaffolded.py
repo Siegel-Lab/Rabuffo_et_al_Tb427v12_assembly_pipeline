@@ -47,9 +47,10 @@ def transfer_annotation_working_scaffold(to_transfer, anno_scaffolded):
                     print("no name", line, file=sys.stderr)
                     assert name != None
                 # print(ctg, name, file=sys.stderr)
-                if "_B" in name and "core" in name:
-                    continue
-                name = "_".join(name.split("_")[:3])
+                if True: # @todo this needs to be a variable
+                    if "_B" in name and "core" in name:
+                        continue
+                    name = "_".join(name.split("_")[:3])
                 if name in contig_translations:
                     contig_translations[name][1] = min(contig_translations[name][1], int(start))
                 else:

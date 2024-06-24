@@ -64,6 +64,9 @@ for from_anno, l in from_anno_list.items():
 #rRNA            0       34      20      0       0       0       0       12      64      44      120
 #tRNA            0       0       0       0       3       7       0       1       130     0       131
 #Centromere      5       9       0       0       0       0       1       4       16      0       20
+#     contig_subt closedgap_full  contig_core expanded_region gap closedgap_b closedgap_a closedgap_masked unitig  total
+# dTSS  41        18              162         12              0   4           2           1                0       194
+# sTSS  0         3               98          6               0   0           1           0                0       98
 
 
 

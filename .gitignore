@@ -6,3 +6,4 @@ data_backup*
 *.o
 */slurm_out/*
 *.fasta
+quast_results/*

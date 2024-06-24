@@ -7,39 +7,66 @@
 #SBATCH -o slurm_out/ont_assembly-%j.out
 
 
+#################
+# CONFIGURATION #
+#################
+
+#
+# download the data that is asked for here & configure the paths to be correct.
+#
 setup() {
+
+
+    ## Package configuration:
+
+    # enable the 'conda activate' command on the cluster
     source /home/mschmidt/.miniconda3/etc/profile.d/conda.sh
 
+    # activate the ont_assembly environment -> a yaml file for this environment is in the repository
     conda activate ont_assembly
+    # there is also a ont_assembly_2 environemnt, which gets activated in this script
 
+    # stop on error
     set -e
 
+    # some tools are preinstalled on out cluster, we load them here. 
+    # You may need to add these tools to your environment instead
     module load ngs/minimap2/2.10
     module load ngs/samtools/1.9
     module load ngs/deeptools/3.5.0
     module load ngs/bedtools2/2.28.0
     module load ncbi-blast/2.7.1+
 
-    # GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid)
-    # GENOME_FILENAME_IN="HGAP3_Tb427v10_diploid_scaffolded"
+
+
+    ## Data Configuration:
+
+    # The folder of the HGAP3_Tb427v11 assembly
     GENOME_FOLDER_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v11)
+    # the filename of the .fasta genome file in the GENOME_FOLDER_IN folder, without the .fasta suffix
     GENOME_FILENAME_IN="Tb427v11_diploid_scaffolded"
-    # GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3)
+    # annotation for the input genome
     GFF_IN_XXX=$(realpath ../data/in/genome_in/HGAP3_Tb427v11/Tb427v11_diploid_scaffolded.gff3)
-    ANA_LYSIS_IN=$(realpath ../data/in/analysis_in)
-    REF_CENTRO=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10.fasta)
-    GFF_CENTRO_IN=$(realpath ../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual.gff3)
-    # ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.nanopore.gz)
+
+    # the nanopore read input, as one merged .fastq.gz file
     ONT_READS_IN=$(realpath ../data/in/ont_reads_in/merged.large.nanopore.gz)
+
+    # the order that contigs should have in the output genome (files are provided in the repo)
     ORDER_IN_CORE_A=$(realpath ../data/in/order_in/Tb427v12_coreA_contigs_order.list)
     ORDER_IN_DIPLOID=$(realpath ../data/in/order_in/Tb427v12_diploid_contigs_order.list)
     ORDER_IN_SCAFFOLDED=$(realpath ../data/in/order_in/Tb427v12_scaffolded_contigs_order.list)
 
+    # the annotation file produced by running companion on the new genome assembly.
+    # this will be filtered down to only using the newly generated regions.
     COMPANINON_GFF_IN=$(realpath ../data/in/companion_in/Tb427v11_diploid_scaffolded.2024.01.16.gff3)
 
+    # old and new contig suffixed of the genomes
     INPUT_CONTIG_SUFFIX="Tb427v11"
     OUTPUT_CONTIG_SUFFIX="Tb427v12"
-    
+
+
+    ## Folder configuration:
+
     BIN_DIR=$(realpath ../bin/)
     DATA_DIR=$(realpath ../data)
 
@@ -49,13 +76,14 @@ setup() {
     OUT_DIR=$(realpath ../data/${OUT_FOLDER})
 
     SCRIPTS_DIR=$(realpath .)
-
-
 }
+#####################
+# CONFIGURATION END #
+#####################
 
-#
-# @todo
-#
+
+
+
 
 main(){
     setup
@@ -144,28 +172,28 @@ main(){
                     # -> ${OUT_DIR}/10_gap_spanning_reads/distance_deviation.tsv
 
 
-    # mask_region ${OUT_DIR}/10.1_test_masked_repeats \
-    #             ${OUT_DIR}/8_merged_genomes/assembly.fasta \
-    #             ${DATA_DIR}/in/mask_repeats/manual_mask.gff \
-    #             ${OUT_DIR}/8_merged_genomes/annotation.gff
-    #             # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
+    mask_region ${OUT_DIR}/10.1_test_masked_repeats \
+                ${OUT_DIR}/8_merged_genomes/assembly.fasta \
+                ${DATA_DIR}/in/mask_repeats/manual_mask.gff \
+                ${OUT_DIR}/8_merged_genomes/annotation.gff
+                # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
 
-    # sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
+    sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
 
-    # cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
+    cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
 
-    # gap_spanning_reads ${OUT_DIR}/10.2_test_gap_spanning_reads \
-    #                 ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
-    #                 ${ONT_READS_IN} \
-    #                 ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+    gap_spanning_reads ${OUT_DIR}/10.2_test_gap_spanning_reads \
+                    ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
+                    ${ONT_READS_IN} \
+                    ${DATA_DIR}/in/mask_repeats/manual_mask.gff
 
-    # annotate_gaps ${OUT_DIR}/10.3_test_annotate_gaps \
-    #             ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
-    #             # -> ${OUT_DIR}/16_reannotated_gaps/gaps.gff3
+    annotate_gaps ${OUT_DIR}/10.3_test_annotate_gaps \
+                ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
+                # -> ${OUT_DIR}/16_reannotated_gaps/gaps.gff3
 
-    # align_reads_to_genome ${OUT_DIR}/10.4_test_align_reads \
-    #     ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
-    #     ${ONT_READS_IN}
+    align_reads_to_genome ${OUT_DIR}/10.4_test_align_reads \
+        ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
+        ${ONT_READS_IN}
 
     identify_collapsed_regions ${OUT_DIR}/13_identify_collapsed_regions \
         ${OUT_DIR}/10_gap_spanning_reads/distance_deviation.tsv \
@@ -267,9 +295,19 @@ main(){
     TRNAC="#E5AD50"
     RRNAC="#709DAE"
 
+    transfer_annotation_to_scaffolded ${OUT_DIR}/20.0_centro_anno_transfer \
+            ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
+            ../data/in/centromere_in/centromere_diploid.gff 
+            # -> ${OUT_DIR}/20.0_centro_anno_transfer/annotation.gff
+
+    # mkdir -p ${OUT_DIR}/21.0_overview_of_remaining_gaps
+    
+
+    cat ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff ${OUT_DIR}/20.0_centro_anno_transfer/annotation.gff > ${OUT_DIR}/20.0_centro_anno_transfer/annotation_merged.gff
+
 
     generate_overview_pic ${OUT_DIR}/21_overview_of_remaining_gaps \
-                        ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff \
+                        ${OUT_DIR}/20.0_centro_anno_transfer/annotation_merged.gff \
                         "mRNA polypeptide protein_match pseudogene filledgap closedgap_full closedgap_a closedgap_b expanded_region unexpanded_reg closedgap_masked gap Centromere rRNA tRNA contig_core" \
                         "Centromere=o:-black;rRNA=${RRNAC};tRNA=${TRNAC};polypeptide=None;protein_match=None;pseudogene=None;mRNA=lightgrey;closedgap_full=${CLOSED};closedgap_a=${CLOSED};closedgap_b=${CLOSED};closedgap_masked=${CLOSED};expanded_region=${CLOSED};gap=${OPEN};unexpanded_reg=${OPEN};contig_core=|:-black"
 
@@ -378,10 +416,10 @@ main(){
 
     # @todo make the below a function!!!
 
-    # transfer_annotation_to_scaffolded ${OUT_DIR}/31_centro_anno_transfer \
-    #         ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.gff \
-    #         '../data/in/centromere_in/centromere_pre_post.gff'
-    #         # -> ${OUT_DIR}/31_centro_anno_transfer/annotation.gff
+    transfer_annotation_to_scaffolded ${OUT_DIR}/31_centro_anno_transfer \
+            ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.gff \
+            '../data/in/centromere_in/centromere_pre_post.gff'
+            # -> ${OUT_DIR}/31_centro_anno_transfer/annotation.gff
 
     transfer_annotation_to_scaffolded ${OUT_DIR}/31.2_centro_anno_transfer \
             ${OUT_DIR}/29_final_output/Tb427v12_diploid_scaffolded/Tb427v12_diploid_scaffolded.gff \
@@ -1128,7 +1166,7 @@ generate_overview_pic(){
         conda activate GENEastics_env
         python3 ${BIN_DIR}/geneastics.py \
             --replicons ${CONTIGS_WITH_GAPS} \
-            --gff_file  ${OUT_FOLDER}/gff_last_column_removed_2.gff \
+            --gff_file ${OUT_FOLDER}/gff_last_column_removed.gff \
             --feature_types ${FEATURES} \
             --alpha 0.99 \
             --feature_color_mapping ${FEATURE_COLORS} \
