@@ -5,7 +5,7 @@
 ## Usage
 
 This pipeline is run using the `run.sh` file.
-First, you will have to install the ont_assembly & ont_assembly_2 conda environments (the .yaml files are provided). Then you will have to install MaScRCA (version 4.1.0, https://github.com/alekseyzimin/masurca) and seqtk (version 1.4, https://github.com/lh3/seqtk) from their githubs into the bin folder. Next, you will have to download and configure all necessary input data (paths can be configured at the top of the `run.sh` file, see list below). Finally, you can run the pipeline by executing the `run.sh` file.
+First, you will have to install the ont_assembly & ont_assembly_2 conda environments (the .yaml files are provided). Then you will have to install MaSucRCA (version 4.1.0, https://github.com/alekseyzimin/masurca) and seqtk (version 1.4, https://github.com/lh3/seqtk) from their githubs into the bin folder. Next, you will have to download and configure all necessary input data (paths can be configured at the top of the `run.sh` file, see list below). Finally, you can run the pipeline by executing the `run.sh` file.
 
 
 You will need the following data:
