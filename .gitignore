@@ -8,3 +8,4 @@ data_backup*
 *.fasta
 quast_results/*
 genome_versions_to_keep/*
+bin/*
