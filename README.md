@@ -1,6 +1,8 @@
-# Closing gaps in the T. brucei Lister 427 genome assembly
+# Closing gaps in the T. brucei Lister 427 genome assembly using ONT reads
 
 ## Introduction
+
+This repository contains the scripts used to improve the T. brucei Lister 427 genome assembly using ONT long reads. Roughly, the pipeline does the following: It runs SAMBA multiple times to close gaps in the assembly. Next, we also expand collapsed repeats by turning them into gaps and closing those gaps using SAMBA. We annotate the newly created sequences and do quality control on them.
 
 ## Usage
 
@@ -9,8 +11,8 @@ First, you will have to install the ont_assembly & ont_assembly_2 conda environm
 
 
 You will need the following data:
-- ONT long reads: @todo add link
-- the HGAP3_Tb427v11 genome assembly & annotation: https://tritrypdb.org/common/downloads/Current_Release/TbruceiLister427_2018/fasta/data/ @todo this is version 10, but we need version 11
+- ONT long reads: @todo link
+- the HGAP3_Tb427v11 genome assembly & annotation: @todo link, this version of the assembly is generated from the HGAP3_Tb427v10 assembly using the pipeline in the HGAP3_Tb427v11_pipeleine folder
 
 
 ## Citation
