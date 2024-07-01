@@ -1,0 +1,23 @@
+name: 2022-10-11-Generate-updated-haplotype-Lister427-genomes-for-EupathDB_env
+channels:
+   - conda-forge
+   - bioconda
+
+dependencies:
+   - pyfastaq
+   - blast
+   - samtools
+   - biopython
+   - perl-bioperl
+   - bioconda::seqtk
+#   - biopython
+#   - genometools-genometools
+#   - python
+#   - pandas
+#   - openpyxl
+#   - bedtools
+#   - pyfastaq
+# for netgpi
+#   - pytorch
+#   - scikit-learn
+#   - matplotlib
