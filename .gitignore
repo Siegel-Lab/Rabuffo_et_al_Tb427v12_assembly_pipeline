@@ -9,3 +9,4 @@ data_backup*
 quast_results/*
 genome_versions_to_keep/*
 bin/*
+copy_from_raul/*
