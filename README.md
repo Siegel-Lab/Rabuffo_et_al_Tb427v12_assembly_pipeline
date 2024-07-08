@@ -12,7 +12,7 @@ First, you will have to install the ont_assembly & ont_assembly_2 conda environm
 
 You will need the following data:
 - ONT long reads: @todo link
-- the HGAP3_Tb427v11 genome assembly & annotation: @todo link, this version of the assembly is generated from the HGAP3_Tb427v10 assembly using the pipeline in the HGAP3_Tb427v11_pipeleine folder
+- the HGAP3_Tb427v11 genome assembly & annotation: https://zenodo.org/doi/10.5281/zenodo.12683395
 
 
 ## Citation

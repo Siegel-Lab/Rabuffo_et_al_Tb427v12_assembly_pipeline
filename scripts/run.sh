@@ -535,7 +535,7 @@ collect_output_files(){
             ${BIN_DIR}/seqtk/seqtk subseq \
                         ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp \
                         ${OUT_FOLDER}/order_element.tmp \
-                >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta
+                >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}_coreB.fasta
         done <${ORDER_IN_CORE_A}
 
         rm ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.fasta.tmp
@@ -547,7 +547,7 @@ collect_output_files(){
             | sed "s/core_${OUTPUT_CONTIG_SUFFIX}_B/core_${OUTPUT_CONTIG_SUFFIX}/g" \
             | python3 ${SCRIPTS_DIR}/sort_gff.py - ${ORDER_IN_CORE_A} \
             > ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.gff
-        cat '../data/in/centromere_in/centromere.gff' >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}.gff
+        cat '../data/in/centromere_in/centromere.gff' >> ${OUT_FOLDER}/${OUTPUT_CONTIG_SUFFIX}_coreB/${OUTPUT_CONTIG_SUFFIX}_coreB.gff
 
 
         # all contigs
