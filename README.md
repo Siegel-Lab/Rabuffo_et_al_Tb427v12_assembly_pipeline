@@ -14,6 +14,9 @@ You will need the following data:
 - ONT long reads: @todo link
 - the HGAP3_Tb427v11 genome assembly & annotation: https://zenodo.org/doi/10.5281/zenodo.12683395
 
+## Output
+
+The finished HGAP3_Tb427v12 assembly can be found here: https://zenodo.org/doi/10.5281/zenodo.12683395
 
 ## Citation
 

@@ -178,22 +178,22 @@ main(){
                 ${OUT_DIR}/8_merged_genomes/annotation.gff
                 # -> ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta
 
-    sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
+    # sed "s/>Chr10_A_${INPUT_CONTIG_SUFFIX} 250001 251000/>Chr10_A_${INPUT_CONTIG_SUFFIX}_masked_250001_251000/g" ${OUT_DIR}/10.1_test_masked_repeats/removed_sequences.fasta > ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta
 
-    cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
+    # cat ${OUT_DIR}/10.1_test_masked_repeats/masked.fasta ${OUT_DIR}/10.1_test_masked_repeats/removed_renamed.fasta > ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
 
-    gap_spanning_reads ${OUT_DIR}/10.2_test_gap_spanning_reads \
-                    ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
-                    ${ONT_READS_IN} \
-                    ${DATA_DIR}/in/mask_repeats/manual_mask.gff
+    # gap_spanning_reads ${OUT_DIR}/10.2_test_gap_spanning_reads \
+    #                 ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
+    #                 ${ONT_READS_IN} \
+    #                 ${DATA_DIR}/in/mask_repeats/manual_mask.gff
 
-    annotate_gaps ${OUT_DIR}/10.3_test_annotate_gaps \
-                ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
-                # -> ${OUT_DIR}/16_reannotated_gaps/gaps.gff3
+    # annotate_gaps ${OUT_DIR}/10.3_test_annotate_gaps \
+    #             ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta
+    #             # -> ${OUT_DIR}/16_reannotated_gaps/gaps.gff3
 
-    align_reads_to_genome ${OUT_DIR}/10.4_test_align_reads \
-        ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
-        ${ONT_READS_IN}
+    # align_reads_to_genome ${OUT_DIR}/10.4_test_align_reads \
+    #     ${OUT_DIR}/10.1_test_masked_repeats/joined.fasta \
+    #     ${ONT_READS_IN}
 
     identify_collapsed_regions ${OUT_DIR}/13_identify_collapsed_regions \
         ${OUT_DIR}/10_gap_spanning_reads/distance_deviation.tsv \
@@ -322,6 +322,7 @@ main(){
                                  ${OUT_DIR}/23_annotate_cores_and_subt/annotation.gff
                                  # -> ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
 
+    
     transfer_annotation_to_scaffolded ${OUT_DIR}/23.2_transfer_annotation_to_scaffold \
             "../data/in/genome_in/HGAP3_Tb427v10_diploid/HGAP3_Tb427v10_diploid_scaffolded.gff3" \
             "../data/in/genome_in/HGAP3_Tb427v10/HGAP3_Tb427v10_manual_siegel.gff3"
@@ -343,7 +344,6 @@ main(){
                         "gene PTU dTSS sTSS cTTS sTTS" \
                         "gene=lightgrey;dTSS=green;sTSS=green;cTTS=red;sTTS=red;PTU=yellow"
 
-                        
 
     OUT_FOLDER=$1
     ASSEMBLY_TRANSFER=$2
@@ -370,7 +370,9 @@ main(){
     extract_regions ${OUT_DIR}/24_extract_haploid_genome \
                 ${OUT_DIR}/18.1_undo_failed_masking/masking_undone.fasta \
                 ${OUT_DIR}/23_annotate_cores_and_subt/contig_and_subt.gff \
-                ${OUT_DIR}/23.4_call_ptus/annotation.gff
+                ${OUT_DIR}/29.1_fixing_TSS_locations/merged_Tb427v11_reamed_contigs_diploid_scaffolded_fixed.gff
+                # @todo use this again ${OUT_DIR}/23.4_call_ptus/annotation.gff
+                
                 # OUTDATED: ${OUT_DIR}/23.1_extract_companion_annotation/annotation.gff
                 # -> ${OUT_DIR}/24_extract_haploid_genome/masked.fasta
                 # -> ${OUT_DIR}/24_extract_haploid_genome/annotation.gff
