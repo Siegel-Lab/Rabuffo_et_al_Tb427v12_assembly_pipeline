@@ -22,4 +22,7 @@ The finished HGAP3_Tb427v12 assembly can be found here: https://zenodo.org/doi/1
 
 If you use the HGAP3_Tb427v12 genome assembly or the scripts in this repository in your research, please cite the following publication:
 
-    Rabuffo, C., Schmidt, M.R., Yadav, P. et al. Inter-chromosomal transcription hubs shape the 3D genome architecture of African trypanosomes. Nat Commun 15, 10716 (2024). https://doi.org/10.1038/s41467-024-55285-9
+    Rabuffo, C., Schmidt, M.R., Yadav, P. et al. 
+    Inter-chromosomal transcription hubs shape the 3D genome architecture of African trypanosomes. 
+    Nat Commun 15, 10716 (2024). 
+    https://doi.org/10.1038/s41467-024-55285-9
