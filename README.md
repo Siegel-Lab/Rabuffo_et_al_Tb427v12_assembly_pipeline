@@ -11,7 +11,7 @@ First, you will have to install the ont_assembly & ont_assembly_2 conda environm
 
 
 You will need the following data:
-- ONT long reads: @todo link
+- ONT long reads: [https://www.ebi.ac.uk/ena/browser/view/PRJEB76933]
 - the HGAP3_Tb427v11 genome assembly & annotation: https://zenodo.org/doi/10.5281/zenodo.12683395
 
 ## Output
@@ -22,4 +22,4 @@ The finished HGAP3_Tb427v12 assembly can be found here: https://zenodo.org/doi/1
 
 If you use the HGAP3_Tb427v12 genome assembly or the scripts in this repository in your research, please cite the following publication:
 
-@todo fill in once manuscript is public
+    Rabuffo, C., Schmidt, M.R., Yadav, P. et al. Inter-chromosomal transcription hubs shape the 3D genome architecture of African trypanosomes. Nat Commun 15, 10716 (2024). https://doi.org/10.1038/s41467-024-55285-9
